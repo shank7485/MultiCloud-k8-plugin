@@ -1,8 +1,6 @@
 .vscode
 *-workspace
-src/github.com
-src/k8s.io
-src/gopkg.in
+src
 pkg
 bin
 target

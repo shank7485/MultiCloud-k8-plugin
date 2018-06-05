@@ -13,9 +13,9 @@ import (
 )
 
 type K8ClientInitiator interface {
-	set_config(string) error
-	set_client() error
-	get_client() *kubernetes.Clientset
+	setConfig(string) error
+	setClient() error
+	getClient() *kubernetes.Clientset
 }
 
 type ConfigClient struct {
@@ -25,36 +25,36 @@ type ConfigClient struct {
 
 var k8 K8ClientInitiator
 
-func InitiateK8client(config_path string) error {
+func InitiateK8client(configPath string) error {
 	k8 = &ConfigClient{
 		config: &restclient.Config{},
 		client: &kubernetes.Clientset{},
 	}
 
-	err := k8.set_config(config_path)
+	err := k8.setConfig(configPath)
 	if err != nil {
 		return err
 	}
 
-	err = k8.set_client()
+	err = k8.setClient()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (kc *ConfigClient) set_config(config_path string) error {
+func (kc *ConfigClient) setConfig(configPath string) error {
 	home := homedir.HomeDir()
 	var kubeconfig *string
 
-	if config_path == "" && home == "" {
+	if configPath == "" && home == "" {
 		return errors.New("config not passed and is not found in ~/.kube. ")
 	}
 
 	if home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	} else {
-		kubeconfig = flag.String("kubeconfig", config_path, "absolute path to the kubeconfig file")
+		kubeconfig = flag.String("kubeconfig", configPath, "absolute path to the kubeconfig file")
 	}
 	log.Println("[INFO] Config: ", *kubeconfig)
 	flag.Parse()
@@ -68,7 +68,7 @@ func (kc *ConfigClient) set_config(config_path string) error {
 	return nil
 }
 
-func (kc *ConfigClient) set_client() error {
+func (kc *ConfigClient) setClient() error {
 	clientset, err := kubernetes.NewForConfig(kc.config)
 	if err != nil {
 		return err
@@ -77,6 +77,6 @@ func (kc *ConfigClient) set_client() error {
 	return nil
 }
 
-func (kc *ConfigClient) get_client() *kubernetes.Clientset {
+func (kc *ConfigClient) getClient() *kubernetes.Clientset {
 	return kc.client
 }
