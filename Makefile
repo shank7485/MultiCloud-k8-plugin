@@ -1,8 +1,14 @@
-GOPATH := $(shell realpath "$(CURDIR)")
+GOPATH := $(shell realpath "$(CURDIR)"/../../)
 
 export GOPATH ...
 
-all: build
+all: build test
+test: run_tests
 
 build: 
-	go build -o $(GOPATH)/target/client $(GOPATH)/cmd/client/*.go
+
+
+	go build -o $(GOPATH)/target/k8client $(CURDIR)/cmd/client/*.go
+
+run_tests:
+	go test $(CURDIR)/cmd/client/*_test.go -cover
