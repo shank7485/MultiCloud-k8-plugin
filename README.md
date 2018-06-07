@@ -23,4 +23,4 @@ From the source directory there is a make file, to build use:
 
 `make build`
 
-This generates a binary in `$GOPATH/target/client`
+This generates a binary in `$GOPATH/target/k8client`
