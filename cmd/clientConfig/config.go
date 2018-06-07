@@ -1,4 +1,4 @@
-package main
+package clientConfig
 
 import (
 	"errors"
@@ -25,7 +25,7 @@ type ConfigClient struct {
 
 var k8 K8ClientInitiator
 
-func InitiateK8client(configPath string) error {
+func initiateK8client(configPath string) error {
 	k8 = &ConfigClient{
 		config: &restclient.Config{},
 		client: &kubernetes.Clientset{},

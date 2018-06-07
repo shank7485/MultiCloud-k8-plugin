@@ -1,50 +1,32 @@
-package main
+package deployment
 
 import (
 	"fmt"
-	"log"
+
+	client "k8-plugin-multicloud/cmd/clientConfig"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/typed/apps/v1"
 )
 
-func init() {
-	err := InitiateK8client("")
+type Deploy struct {
+	Namespace         string // Default: apiv1.NamespaceDefault
+	DeploymentsClient v1.DeploymentInterface
+}
+
+func (d *Deploy) InitiateDeploymentClient(namespace string) error {
+	k8client, err := client.InitiateClient()
 	if err != nil {
-		log.Panic(err.Error())
+		return err
 	}
+	d.Namespace = namespace
+	d.DeploymentsClient = k8client.AppsV1().Deployments(d.Namespace)
+	return nil
 }
 
-func main() {
-	client := k8.getClient()
-
-	printAllPods(client)
-
-	deploymentsClient := client.AppsV1().Deployments(apiv1.NamespaceDefault)
-
-	createDeployment(deploymentsClient)
-	getDeployment(deploymentsClient)
-	deleteDeployment(deploymentsClient)
-}
-
-/*
-The following are just examples on how to use client.
-*/
-func printAllPods(client *kubernetes.Clientset) {
-	pods, err := client.CoreV1().Pods("").List(metav1.ListOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-
-	for _, pod := range pods.Items {
-		fmt.Println("Container Name: " + pod.GetName())
-	}
-}
-
-func createDeployment(deploymentsClient v1.DeploymentInterface) {
+func (d *Deploy) CreateDeployment() error {
 	// https://github.com/kubernetes/client-go/blob/master/examples/create-update-delete-deployment/main.go
 	deploymentYAMLStruct := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -84,32 +66,34 @@ func createDeployment(deploymentsClient v1.DeploymentInterface) {
 		},
 	}
 
-	result, err := deploymentsClient.Create(deploymentYAMLStruct)
+	result, err := d.DeploymentsClient.Create(deploymentYAMLStruct)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	fmt.Printf("Created deployment %q.\n", result.GetObjectMeta().GetName())
+	return nil
 }
 
-func getDeployment(deploymentsClient v1.DeploymentInterface) {
-	list, err := deploymentsClient.List(metav1.ListOptions{})
+func (d *Deploy) GetDeployment() error {
+	list, err := d.DeploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
 	for _, d := range list.Items {
 		fmt.Println(d.Name)
 	}
-
+	return nil
 }
 
-func deleteDeployment(deploymentsClient v1.DeploymentInterface) {
+func (d *Deploy) DeleteDeployment() error {
 	deletePolicy := metav1.DeletePropagationForeground
-	err := deploymentsClient.Delete("demo-deployment", &metav1.DeleteOptions{
+	err := d.DeploymentsClient.Delete("demo-deployment", &metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	})
 
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
