@@ -9,4 +9,4 @@ build:
 	go build -o $(GOPATH)/target/k8client $(CURDIR)/cmd/main.go
 
 run_tests:
-	go test $(CURDIR)/cmd/client/*_test.go -cover
+	go test $(CURDIR)/cmd/clientConfig/*_test.go -cover
