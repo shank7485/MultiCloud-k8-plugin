@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"k8-plugin-multicloud/cmd/deployment"
+	"github.com/shank7485/k8-plugin-multicloud/cmd/deployment"
 )
 
 func main() {

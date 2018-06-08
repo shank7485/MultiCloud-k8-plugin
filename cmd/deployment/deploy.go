@@ -3,7 +3,7 @@ package deployment
 import (
 	"fmt"
 
-	client "k8-plugin-multicloud/cmd/clientConfig"
+	client "github.com/shank7485/k8-plugin-multicloud/cmd/clientConfig"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
