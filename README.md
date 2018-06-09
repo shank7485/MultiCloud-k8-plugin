@@ -1,4 +1,8 @@
 # MultiCloud-k8-plugin
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/shank7485/k8-plugin-multicloud)](https://goreportcard.com/report/github.com/shank7485/k8-plugin-multicloud)
+[![GoDoc](https://godoc.org/github.com/shank7485/k8-plugin-multicloud?status.svg)](https://godoc.org/github.com/shank7485/k8-plugin-multicloud)
+
 Multicloud Kubernetes plugin for ONAP multicloud.
 
 # Installation
