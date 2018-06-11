@@ -59,8 +59,8 @@
 [[projects]]
   name = "github.com/imdario/mergo"
   packages = ["."]
-  revision = "9d5f1277e9a8ed20c3684bda8fde67c05628518c"
-  version = "v0.3.4"
+  revision = "9316a62528ac99aaecb4e47eadd6dc8aa6533d58"
+  version = "v0.3.5"
 
 [[projects]]
   name = "github.com/json-iterator/go"
@@ -90,7 +90,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "b47b1587369238182299fe4dad77d05b8b461e06"
+  revision = "8ac0e0d97ce45cd83d1d7243c060cb8461dda5e9"
 
 [[projects]]
   branch = "master"
@@ -102,7 +102,7 @@
     "http2/hpack",
     "idna"
   ]
-  revision = "1e491301e022f8f977054da4c2d852decd59571f"
+  revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
 
 [[projects]]
   branch = "master"
@@ -111,7 +111,7 @@
     "unix",
     "windows"
   ]
-  revision = "9527bec2660bd847c050fda93a0f0c6dee0800bb"
+  revision = "bff228c7b664c5fce602223a05fb708fd8654986"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -185,10 +185,9 @@
     "storage/v1alpha1",
     "storage/v1beta1"
   ]
-  revision = "aac5d23ea3ca7132d75daeed7516f8205553c832"
+  revision = "72d6e4405f8143815cbd454ab04b38210a9f32fc"
 
 [[projects]]
-  branch = "master"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/errors",
@@ -227,7 +226,8 @@
     "pkg/watch",
     "third_party/forked/golang/reflect"
   ]
-  revision = "521145febf93d5639dce48a49ee8dc080863b034"
+  revision = "31dade610c053669d8054bfd847da657251e8c1a"
+  version = "kubernetes-1.10.3"
 
 [[projects]]
   name = "k8s.io/client-go"
@@ -288,6 +288,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b8c5ad66c33778c4d20fdcc7bd6131d9eef3ca061a325be9ee734e971164d9eb"
+  inputs-digest = "e51306eacdc734abc2e27b9c0be8bf3dda8ed9c2512c2a80981ac1761415ab28"
   solver-name = "gps-cdcl"
   solver-version = 1
