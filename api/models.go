@@ -21,7 +21,7 @@ type CreateVNFRequest struct {
 	InstanceID        string        `json:"instance_id"`
 }
 
-// CreateVNFRequest contains additional information required for the VNF instance
+// OOFParameters contains additional information required for the VNF instance
 type OOFParameters struct {
 	KeyValues map[string]string `json:"key_values"`
 }

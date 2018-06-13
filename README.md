@@ -8,5 +8,8 @@ MultiCloud Kubernetes plugin for ONAP multicloud.
 
 # Installation
 
-`go get github.com/shank7485/k8-plugin-multicloud/...`
+Requirements:
+* Go 1.10
+* Dep
 
+`go get github.com/shank7485/k8-plugin-multicloud/...`
