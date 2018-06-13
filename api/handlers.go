@@ -58,15 +58,10 @@ func (s *VNFInstanceService) CreateVNF(w http.ResponseWriter, r *http.Request) {
 	// Persist in AAI database.
 	log.Println(body.CsarArtificateID + "_" + string(uuid))
 
-	rawYAMLbytes, err := utils.GetYAML(body.CsarArtificateURL)
+	deploymentStruct, err := utils.DownloadDeploymentInfo(body.CsarArtificateURL)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	deploymentStruct, err := utils.ConvertYAMLtoStructs(rawYAMLbytes)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		werr := pkgerrors.Wrap(err, "Get Deployment information error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
