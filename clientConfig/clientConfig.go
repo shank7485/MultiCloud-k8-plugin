@@ -23,24 +23,25 @@ type ConfigClient struct {
 	client *kubernetes.Clientset
 }
 
-var k8 K8ClientInitiator
+var K8 K8ClientInitiator
 
-func initiateK8client(configPath string) error {
-	k8 = &ConfigClient{
+func InitiateK8Client(kubeconfigPath string ) (*kubernetes.Clientset, error) {
+	K8 = &ConfigClient{
 		config: &restclient.Config{},
 		client: &kubernetes.Clientset{},
 	}
 
-	err := k8.setConfig(configPath)
+	err := K8.setConfig(kubeconfigPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = k8.setClient()
+	err = K8.setClient()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+
+	return K8.getClient(), nil
 }
 
 func (kc *ConfigClient) setConfig(configPath string) error {
@@ -80,3 +81,22 @@ func (kc *ConfigClient) setClient() error {
 func (kc *ConfigClient) getClient() *kubernetes.Clientset {
 	return kc.client
 }
+
+/*
+The following are just examples on how to use client.
+*/
+// func main() {
+// 	client := k8.getClient()
+// 	PrintAllPods(client)
+// }
+
+// func PrintAllPods(client *kubernetes.Clientset) {
+// 	pods, err := client.CoreV1().Pods("").List(metav1.ListOptions{})
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+
+// 	for _, pod := range pods.Items {
+// 		log.Println("Container Name: " + pod.GetName())
+// 	}
+// }

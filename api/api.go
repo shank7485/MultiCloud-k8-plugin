@@ -13,6 +13,31 @@ limitations under the License.
 
 package api
 
+import (
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"log"
+	"net/http"
+	"os"
+)
+
+func init() {
+	err := InitiateK8client("")
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+func main() {
+	router := mux.NewRouter()
+	router.HandleFunc("/v1/vnf_instances", CreateVNF).Methods("POST")
+	router.HandleFunc("/v1/vnf_instances", ListVNF).Methods("GET")
+
+	loggedRouter := handlers.LoggingHandler(os.Stdout, router)
+	log.Println("[INFO] Started Kubernetes Multicloud API")
+	log.Fatal(http.ListenAndServe(":8080", loggedRouter)) // Remove hardcode.
+}
+
 // import (
 // 	"net/http"
 

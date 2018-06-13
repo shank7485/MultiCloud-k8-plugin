@@ -1,0 +1,149 @@
+swagger: "2.0"
+info:
+  description: "API reference for MultiCloud Kubernetes Plugin."
+  version: "1.0.0"
+  title: "API reference for MultiCloud Kubernetes Plugin."
+  contact:
+    url: "https://wiki.onap.org/display/DW/Support+for+K8S+%28Kubernetes%29+based+Cloud+regions"
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+basePath: "/v1.0"
+schemes:
+- "http"
+paths:
+  /vnf_instances:
+    post:
+      tags:
+      - "Deployment of VNF Containers"
+      summary: "Create Kubernetes based VNF deployment."
+      description: "Endpoint to create Kubernetes based VNF deployment."
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Create new Kubernetes Deployment"
+        required: true
+        schema:
+          $ref: "#/definitions/DeploymentPOSTRequest"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/DeploymentPOSTResponse"
+  /vnf_instances/:
+    get:
+      tags:
+      - "Deployment of VNF Containers"
+      summary: "List all Kubernetes based VNF deployments."
+      description: "Endpoint to list all Kubernetes based VNF deployments."
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/DeploymentGETSResponse"
+  /vnf_instances/{name}:
+    get:
+      tags:
+      - "Deployment of VNF Containers"
+      summary: "Get details of a Kubernetes based VNF deployment."
+      description: "Endpoint to get details of a Kubernetes based VNF deployment."
+      produces:
+      - "application/json"
+      parameters:
+      - name: "name"
+        in: "path"
+        description: "Name used to query"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/DeploymentGETResponse"
+    patch:
+      tags: 
+      - "Deployment of VNF Containers"
+      summary: "Update a Kubernetes based VNF deployment."
+      description: "Endp to update a Kubernetes based VNF deployment."
+      produces:
+        - "application/json"
+      parameters:
+        - name: "name"
+          in: "path"
+          description: "Name used to patch"
+          required: true
+          type: "string"
+        - name: "body"
+          in: "body"
+          description: "Patch an existing Kubernetes Deployment"
+          required: true
+          schema:
+            $ref: "#/definitions/DeploymentPATCHRequest"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/DeploymentPATCHResponse"
+    delete:
+      tags:
+        - "Deployment of VNF Containers"
+      summary: "Delete a Kubernetes based VNF deployment."
+      description: "Endpoint to delete a Kubernetes based VNF deployment."
+      produces:
+        - "application/json"
+      parameters:
+        - name: "name"
+          in: "path"
+          description: "Name used to delete"
+          required: true
+          type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/DeploymentDELETEResponse"
+definitions:
+  DeploymentPOSTRequest:
+    type: "object"
+    properties:
+      name:
+        type: "string"
+      csar_id:
+        type: "string"
+  DeploymentPOSTResponse:
+    type: "object"
+    properties:
+      response:
+        type: "string"
+  DeploymentGETSResponse:
+    type: "object"
+    properties:
+      response:
+        items:
+          type: "string"
+  DeploymentGETResponse:
+    type: "object"
+    properties:
+      response:
+        type: "string"
+  DeploymentPATCHRequest:
+    type: "object"
+    properties:
+      name:
+        type: "string"
+  DeploymentPATCHResponse:
+    type: "object"
+    properties:
+      response:
+        type: "string"
+  DeploymentDELETEResponse:
+    type: "object"
+    properties:
+      response:
+        type: "string"
