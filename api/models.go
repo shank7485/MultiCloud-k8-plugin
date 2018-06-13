@@ -15,8 +15,8 @@ package api
 
 // CreateVNFRequest contains the fields required for the VNF Creation
 type CreateVNFRequest struct {
-	CsarArtificateID  string `json:"csar_artificate_id"`
-	CsarArtificateURL string
+	CsarArtificateID  string 		`json:"csar_artificate_id"`
+	CsarArtificateURL string 		`json:"csar_artificate_url"`
 	OOFParams         OOFParameters `json:"oof_parameters"`
 	InstanceID        string        `json:"instance_id"`
 }

@@ -37,5 +37,5 @@ func Start() {
 
 	loggedRouter := handlers.LoggingHandler(os.Stdout, router)
 	log.Println("[INFO] Started Kubernetes Multicloud API")
-	log.Fatal(http.ListenAndServe(":8080", loggedRouter)) // Remove hardcode.
+	log.Fatal(http.ListenAndServe(":8081", loggedRouter)) // Remove hardcode.
 }
