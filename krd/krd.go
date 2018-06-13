@@ -48,7 +48,7 @@ package krd
 // 	if err != nil {
 // 		return err
 // 	}
-	
+
 // 	deployment := &vnfInstance.Deployment
 // 	_, err = c.Client.Create(deployment)
 // 	if err != nil {
