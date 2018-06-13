@@ -3,4 +3,4 @@ language: go
 go:
   - 1.10
 
-script: make ci
+script: go test -v ./...
