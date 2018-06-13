@@ -11,28 +11,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package api
+package main
 
 import (
-	"log"
-	"net/http"
-	"os"
-
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
+	"github.com/shank7485/k8-plugin-multicloud/api"
 )
 
-func Start() {
-	service, err := NewVNFInstanceService("")
-	if err != nil {
-		log.Panic(err)
-	}
-
-	router := mux.NewRouter()
-	router.HandleFunc("/v1/vnf_instances", service.CreateVNF).Methods("POST")
-	router.HandleFunc("/v1/vnf_instances", service.ListVNF).Methods("GET")
-
-	loggedRouter := handlers.LoggingHandler(os.Stdout, router)
-	log.Println("[INFO] Started Kubernetes Multicloud API")
-	log.Fatal(http.ListenAndServe(":8080", loggedRouter)) // Remove hardcode.
+func main() {
+	api.Start()
 }

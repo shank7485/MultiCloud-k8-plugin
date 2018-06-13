@@ -26,19 +26,25 @@ import (
 	"github.com/shank7485/k8-plugin-multicloud/utils"
 )
 
-var k8client *kubernetes.Clientset
+// VNFInstanceService communicates the actions to Kubernetes deployment
+type VNFInstanceService struct {
+	Client *kubernetes.Clientset
+}
 
-// InitiateK8client creates a client that comunicates with a Kuberentes Cluster
-func InitiateK8client(kubeConfigPath string) error {
-	k8client, err := client.InitiateK8Client(kubeConfigPath)
+// NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
+func NewVNFInstanceService(kubeConfigPath string) (*VNFInstanceService, error) {
+	client, err := client.InitiateK8Client(kubeConfigPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	vnfService := &VNFInstanceService{
+		Client: client,
+	}
+	return vnfService, nil
 }
 
 // CreateVNF creates a VNF Instance based on the Resquest
-func CreateVNF(w http.ResponseWriter, r *http.Request) {
+func (s *VNFInstanceService) CreateVNF(w http.ResponseWriter, r *http.Request) {
 	var body CreateVNFRequest
 
 	err := json.NewDecoder(r.Body).Decode(&body)
@@ -63,7 +69,7 @@ func CreateVNF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := k8client.AppsV1().Deployments("default").Create(deploymentStruct)
+	result, err := s.Client.AppsV1().Deployments("default").Create(deploymentStruct)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -85,8 +91,8 @@ func CreateVNF(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListVNF lists the existing VNF instances created in a given Kubernetes cluster
-func ListVNF(w http.ResponseWriter, r *http.Request) {
-	list, err := k8client.AppsV1().Deployments("default").List(metaV1.ListOptions{})
+func (s *VNFInstanceService) ListVNF(w http.ResponseWriter, r *http.Request) {
+	list, err := s.Client.AppsV1().Deployments("default").List(metaV1.ListOptions{})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
