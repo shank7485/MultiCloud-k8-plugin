@@ -13,40 +13,46 @@ limitations under the License.
 
 package krd
 
-import (
-	deploymentsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+// import (
+// 	deploymentsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 
-	multicloud "github.com/shank7485/k8-plugin-multicloud"
-	"github.com/shank7485/k8-plugin-multicloud/cmd/clientConfig"
-)
+// 	"github.com/shank7485/k8-plugin-multicloud/multicloud"
+// 	"github.com/shank7485/k8-plugin-multicloud/cmd/clientConfig"
+// )
 
-// VNFInstanceClient consumes the API of Kubernetes Reference Deployment
-type VNFInstanceClient struct {
-	Client deploymentsv1.DeploymentInterface
-}
+// // VNFInstanceClientInterface has methods to work with VNF Instance resources.
+// type VNFInstanceClientInterface interface {
+// 	Create(vnfInstance *multicloud.VNFInstanceResource) error
+// }
 
-// VNFInstanceClientInterface has methods to work with VNF Instance resources.
-type VNFInstanceClientInterface interface {
-	Create(vnfInstance *multicloud.VNFInstanceResource) error
-}
+// // VNFInstanceClient consumes the API of Kubernetes Reference Deployment
+// type VNFInstanceClient struct {
+// 	Client deploymentsv1.DeploymentInterface
+// }
 
-// NewVNFInstanceClient instantiate a VNFInstanceClient object
-func NewVNFInstanceClient(namespace string) (*VNFInstanceClient, error) {
-	config, err := clientConfig.InitiateClient()
-	if err != nil {
-		return nil, err
-	}
-	client := VNFInstanceClient{
-		Client: config.AppsV1().Deployments(namespace),
-	}
-	return &client, nil
-}
+// // NewVNFInstanceClient instantiate a VNFInstanceClient object
+// func NewVNFInstanceClient(namespace string) (*VNFInstanceClient, error) {
+// 	config, err := clientConfig.InitiateClient()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	client := VNFInstanceClient{
+// 		Client: config.AppsV1().Deployments(namespace),
+// 	}
+// 	return &client, nil
+// }
 
 // Create VNFInstance resource in a specific Kubernetes Deployment
-func (c *VNFInstanceClient) Create(vnfInstance *multicloud.VNFInstanceResource) error {
-	_, err := c.Client.Create(vnfInstance.ConvertToDeployment())
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// func (c *VNFInstanceClient) Create(vnfInstance multicloud.VNFInstanceResourceInterface, csar_url string) error {
+// 	err := vnfInstance.DownloadVNFDeployment(csar_url)
+// 	if err != nil {
+// 		return err
+// 	}
+	
+// 	deployment := &vnfInstance.Deployment
+// 	_, err = c.Client.Create(deployment)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
