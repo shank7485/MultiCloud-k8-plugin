@@ -1,3 +1,16 @@
+/*
+Copyright 2018 Intel Corporation.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package clientConfig
 
 import (
@@ -6,6 +19,7 @@ import (
 	"log"
 	"path/filepath"
 
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -25,7 +39,7 @@ type ConfigClient struct {
 
 var K8 K8ClientInitiator
 
-func InitiateK8Client(kubeconfigPath string ) (*kubernetes.Clientset, error) {
+func InitiateK8Client(kubeconfigPath string) (*kubernetes.Clientset, error) {
 	K8 = &ConfigClient{
 		config: &restclient.Config{},
 		client: &kubernetes.Clientset{},
@@ -62,7 +76,7 @@ func (kc *ConfigClient) setConfig(configPath string) error {
 
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
-		return err
+		return pkgerrors.Wrap(err, "setConfig: Build config from flags raised an error")
 	}
 
 	kc.config = config
@@ -81,22 +95,3 @@ func (kc *ConfigClient) setClient() error {
 func (kc *ConfigClient) getClient() *kubernetes.Clientset {
 	return kc.client
 }
-
-/*
-The following are just examples on how to use client.
-*/
-// func main() {
-// 	client := k8.getClient()
-// 	PrintAllPods(client)
-// }
-
-// func PrintAllPods(client *kubernetes.Clientset) {
-// 	pods, err := client.CoreV1().Pods("").List(metav1.ListOptions{})
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-
-// 	for _, pod := range pods.Items {
-// 		log.Println("Container Name: " + pod.GetName())
-// 	}
-// }
