@@ -19,6 +19,7 @@ import (
 	"log"
 	"path/filepath"
 
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -75,7 +76,7 @@ func (kc *ConfigClient) setConfig(configPath string) error {
 
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
-		return err
+		return pkgerrors.Wrap(err, "setConfig: Build config from flags raised an error")
 	}
 
 	kc.config = config

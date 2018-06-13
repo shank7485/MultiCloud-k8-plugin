@@ -20,12 +20,15 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	pkgerrors "github.com/pkg/errors"
 )
 
+// Start VNFInstance WebService
 func Start() {
 	service, err := NewVNFInstanceService("")
 	if err != nil {
-		log.Panic(err)
+		werr := pkgerrors.Wrap(err, "Creation of a service error")
+		log.Panic(werr)
 	}
 
 	router := mux.NewRouter()

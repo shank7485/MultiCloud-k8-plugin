@@ -18,6 +18,7 @@ import (
 	"log"
 	"net/http"
 
+	pkgerrors "github.com/pkg/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes"
@@ -71,7 +72,8 @@ func (s *VNFInstanceService) CreateVNF(w http.ResponseWriter, r *http.Request) {
 
 	result, err := s.Client.AppsV1().Deployments("default").Create(deploymentStruct)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		werr := pkgerrors.Wrap(err, "Create VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -86,7 +88,8 @@ func (s *VNFInstanceService) CreateVNF(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		werr := pkgerrors.Wrap(err, "Parsing output of new VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -94,14 +97,14 @@ func (s *VNFInstanceService) CreateVNF(w http.ResponseWriter, r *http.Request) {
 func (s *VNFInstanceService) ListVNF(w http.ResponseWriter, r *http.Request) {
 	list, err := s.Client.AppsV1().Deployments("default").List(metaV1.ListOptions{})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		werr := pkgerrors.Wrap(err, "Get VNF list error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	resp := GeneralResponse{
 		Response: "Listing:",
 	}
-	log.Println("")
 
 	for _, d := range list.Items {
 		log.Println(d.Name)
@@ -112,7 +115,8 @@ func (s *VNFInstanceService) ListVNF(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		werr := pkgerrors.Wrap(err, "Parsing output VNF list error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
 	}
 
 }
