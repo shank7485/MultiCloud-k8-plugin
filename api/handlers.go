@@ -58,7 +58,7 @@ func (s *VNFInstanceService) CreateVNF(w http.ResponseWriter, r *http.Request) {
 	// Persist in AAI database.
 	log.Println(body.CsarArtificateID + "_" + string(uuid))
 
-	deploymentStruct, err := utils.DownloadDeploymentInfo(body.CsarArtificateURL)
+	deploymentStruct, err := utils.GetDeploymentInfo(body.CsarArtificateURL)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get Deployment information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
