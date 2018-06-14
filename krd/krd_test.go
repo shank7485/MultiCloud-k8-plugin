@@ -11,71 +11,58 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package krd_test
+package krd
 
-// import (
-// 	"testing"
+import (
+	"testing"
 
-// 	"github.com/shank7485/k8-plugin-multicloud/multicloud"
-// 	"github.com/shank7485/k8-plugin-multicloud/krd"
-// 	apps_v1 "k8s.io/api/apps/v1"
-// 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-// 	"k8s.io/apimachinery/pkg/types"
-// 	"k8s.io/apimachinery/pkg/watch"
-// )
+	appsV1 "k8s.io/api/apps/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
-// type FakeClient struct{}
+type MockClient struct {
+	create func() (*appsV1.Deployment, error)
+	list   func() (*appsV1.DeploymentList, error)
+}
 
-// func (c *FakeClient) Create(deployment *apps_v1.Deployment) (result *apps_v1.Deployment, err error) {
-// 	return
-// }
+func (c *MockClient) Create(deployment *appsV1.Deployment) (*appsV1.Deployment, error) {
+	if c.create != nil {
+		return c.create()
+	}
+	return nil, nil
+}
 
-// func (c *FakeClient) Update(*apps_v1.Deployment) (*apps_v1.Deployment, error) {
-// 	return nil, nil
-// }
+func (c *MockClient) List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error) {
+	if c.create != nil {
+		return c.list()
+	}
+	return nil, nil
+}
 
-// func (c *FakeClient) UpdateStatus(*apps_v1.Deployment) (*apps_v1.Deployment, error) {
-// 	return nil, nil
-// }
+func TestCreate(t *testing.T) {
+	fn := func(t *testing.T) {
+		expected := "sise-deploy"
+		input := &appsV1.Deployment{
+			ObjectMeta: metaV1.ObjectMeta{
+				Name: expected,
+			},
+		}
+		getKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
 
-// func (c *FakeClient) Delete(name string, options *meta_v1.DeleteOptions) error {
-// 	return nil
-// }
-
-// func (c *FakeClient) DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error {
-// 	return nil
-// }
-
-// func (c *FakeClient) Get(name string, options meta_v1.GetOptions) (*apps_v1.Deployment, error) {
-// 	return nil, nil
-// }
-
-// func (c *FakeClient) List(opts meta_v1.ListOptions) (*apps_v1.DeploymentList, error) {
-// 	return nil, nil
-// }
-
-// func (c *FakeClient) Watch(opts meta_v1.ListOptions) (watch.Interface, error) {
-// 	return nil, nil
-// }
-
-// func (c *FakeClient) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *apps_v1.Deployment, err error) {
-// 	return nil, nil
-// }
-
-// type FakeVNFInstanceResource struct {}
-
-// func (f *FakeVNFInstanceResource) DownloadVNFDeployment(url string) {
-// 	return nil
-// }
-
-// func TestVNFInstanceClientCreate(t *testing.T) {
-// 	client := krd.VNFInstanceClient{
-// 		Client: &FakeClient{},
-// 	}
-// 	testVNF := &FakeVNFInstanceResource{}
-
-// 	err := client.Create(testVNF, "CSAR_URL")
-// 	if err != nil {
-// 		t.Fatalf("TestVNFInstanceClientCreate returned an error (%s)", err)
-// 	}
-// }
+			return &MockClient{
+				create: func() (*appsV1.Deployment, error) {
+					return input, nil
+				},
+			}, nil
+		}
+		client, err := NewClient("")
+		if err != nil {
+			t.Fatalf("TestCreate returned an error (%s)", err)
+		}
+		result, err := client.Create(input)
+		if result != expected {
+			t.Fatalf("TestCreate returned:\n result=%v\n expected=%v", result, expected)
+		}
+	}
+	t.Run("Standard", fn)
+}

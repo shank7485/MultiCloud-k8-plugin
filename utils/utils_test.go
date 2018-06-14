@@ -23,7 +23,7 @@ import (
 
 func TestDownloadDeploymentInfo(t *testing.T) {
 	fn := func(t *testing.T) {
-		getPage = func(url string) ([]byte, error) {
+		download = func(url string) ([]byte, error) {
 			body := `
 apiVersion: apps/v1
 kind: Deployment

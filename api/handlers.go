@@ -19,22 +19,29 @@ import (
 	"net/http"
 
 	pkgerrors "github.com/pkg/errors"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsV1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/client-go/kubernetes"
 
-	client "github.com/shank7485/k8-plugin-multicloud/clientConfig"
+	"github.com/shank7485/k8-plugin-multicloud/krd"
 	"github.com/shank7485/k8-plugin-multicloud/utils"
 )
 
 // VNFInstanceService communicates the actions to Kubernetes deployment
 type VNFInstanceService struct {
-	Client *kubernetes.Clientset
+	Client VNFInstanceClientInterface
+}
+
+// VNFInstanceClientInterface has methods to work with VNF Instance resources.
+type VNFInstanceClientInterface interface {
+	Create(deployment *appsV1.Deployment) (string, error)
+	List(limit int64) (*appsV1.DeploymentList, error)
 }
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
 func NewVNFInstanceService(kubeConfigPath string) (*VNFInstanceService, error) {
-	client, err := client.InitiateK8Client(kubeConfigPath)
+	var client VNFInstanceClientInterface
+
+	client, err := krd.NewClient(kubeConfigPath)
 	if err != nil {
 		return nil, err
 	}
@@ -44,11 +51,11 @@ func NewVNFInstanceService(kubeConfigPath string) (*VNFInstanceService, error) {
 	return vnfService, nil
 }
 
-// CreateVNF creates a VNF Instance based on the Resquest
-func (s *VNFInstanceService) CreateVNF(w http.ResponseWriter, r *http.Request) {
-	var body CreateVNFRequest
+// Create a VNF Instance based on the Resquest
+func (s *VNFInstanceService) Create(w http.ResponseWriter, r *http.Request) {
+	var resource VNFInstanceResource
 
-	err := json.NewDecoder(r.Body).Decode(&body)
+	err := json.NewDecoder(r.Body).Decode(&resource)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -56,16 +63,16 @@ func (s *VNFInstanceService) CreateVNF(w http.ResponseWriter, r *http.Request) {
 
 	uuid := uuid.NewUUID()
 	// Persist in AAI database.
-	log.Println(body.CsarArtificateID + "_" + string(uuid))
+	log.Println(resource.CsarArtificateID + "_" + string(uuid))
 
-	deploymentStruct, err := utils.GetDeploymentInfo(body.CsarArtificateURL)
+	deployment, err := utils.GetDeploymentInfo(resource.CsarArtificateURL)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get Deployment information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	result, err := s.Client.AppsV1().Deployments("default").Create(deploymentStruct)
+	name, err := s.Client.Create(deployment)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -73,10 +80,8 @@ func (s *VNFInstanceService) CreateVNF(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := GeneralResponse{
-		Response: "Created Deployment:" + result.GetObjectMeta().GetName(),
+		Response: "Created Deployment:" + name,
 	}
-	name := result.GetObjectMeta().GetName()
-	log.Println("Created deployment: " + name)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -88,9 +93,9 @@ func (s *VNFInstanceService) CreateVNF(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ListVNF lists the existing VNF instances created in a given Kubernetes cluster
-func (s *VNFInstanceService) ListVNF(w http.ResponseWriter, r *http.Request) {
-	list, err := s.Client.AppsV1().Deployments("default").List(metaV1.ListOptions{})
+// List the existing VNF instances created in a given Kubernetes cluster
+func (s *VNFInstanceService) List(w http.ResponseWriter, r *http.Request) {
+	_, err := s.Client.List(int64(10)) // TODO (electrocucaracha): export this as configuration value
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF list error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -99,10 +104,6 @@ func (s *VNFInstanceService) ListVNF(w http.ResponseWriter, r *http.Request) {
 
 	resp := GeneralResponse{
 		Response: "Listing:",
-	}
-
-	for _, d := range list.Items {
-		log.Println(d.Name)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

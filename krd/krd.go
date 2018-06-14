@@ -13,46 +13,83 @@ limitations under the License.
 
 package krd
 
-// import (
-// 	deploymentsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
+import (
+	"errors"
 
-// 	"github.com/shank7485/k8-plugin-multicloud/multicloud"
-// 	"github.com/shank7485/k8-plugin-multicloud/cmd/clientConfig"
-// )
+	pkgerrors "github.com/pkg/errors"
 
-// // VNFInstanceClientInterface has methods to work with VNF Instance resources.
-// type VNFInstanceClientInterface interface {
-// 	Create(vnfInstance *multicloud.VNFInstanceResource) error
-// }
+	appsV1 "k8s.io/api/apps/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+)
 
-// // VNFInstanceClient consumes the API of Kubernetes Reference Deployment
-// type VNFInstanceClient struct {
-// 	Client deploymentsv1.DeploymentInterface
-// }
+// Client is the client used to communicate with Kubernetes Reference Deployment
+type Client struct {
+	deploymentClient ClientDeploymentInterface
+}
 
-// // NewVNFInstanceClient instantiate a VNFInstanceClient object
-// func NewVNFInstanceClient(namespace string) (*VNFInstanceClient, error) {
-// 	config, err := clientConfig.InitiateClient()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	client := VNFInstanceClient{
-// 		Client: config.AppsV1().Deployments(namespace),
-// 	}
-// 	return &client, nil
-// }
+// ClientDeploymentInterface contains a subset of supported methods
+type ClientDeploymentInterface interface {
+	Create(*appsV1.Deployment) (*appsV1.Deployment, error)
+	List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error)
+}
 
-// Create VNFInstance resource in a specific Kubernetes Deployment
-// func (c *VNFInstanceClient) Create(vnfInstance multicloud.VNFInstanceResourceInterface, csar_url string) error {
-// 	err := vnfInstance.DownloadVNFDeployment(csar_url)
-// 	if err != nil {
-// 		return err
-// 	}
+// NewClient loads Kubernetes local configuration values into a client
+func NewClient(kubeconfigPath string) (*Client, error) {
+	var deploymentClient ClientDeploymentInterface
 
-// 	deployment := &vnfInstance.Deployment
-// 	_, err = c.Client.Create(deployment)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
+	deploymentClient, err := getKubeClient(kubeconfigPath)
+	if err != nil {
+		return nil, err
+	}
+	client := &Client{
+		deploymentClient: deploymentClient,
+	}
+	return client, nil
+}
+
+var getKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
+	var result ClientDeploymentInterface
+
+	if configPath == "" {
+		return nil, errors.New("config not passed and is not found in ~/.kube. ")
+	}
+
+	config, err := clientcmd.BuildConfigFromFlags("", configPath)
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "setConfig: Build config from flags raised an error")
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	result = clientset.AppsV1().Deployments("default")
+	return result, nil
+}
+
+// Create deployment object in a specific Kubernetes Deployment
+func (c *Client) Create(deployment *appsV1.Deployment) (string, error) {
+	result, err := c.deploymentClient.Create(deployment)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Create VNF error")
+	}
+
+	return result.GetObjectMeta().GetName(), nil
+}
+
+// List of existing deployments hosted in a specidf Kubernetes Deployment
+func (c *Client) List(limit int64) (*appsV1.DeploymentList, error) {
+	opts := metaV1.ListOptions{
+		Limit: limit,
+	}
+	opts.APIVersion = "apps/v1"
+	opts.Kind = "Deployment"
+
+	list, err := c.deploymentClient.List(opts)
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "Get VNF list error")
+	}
+	return list, nil
+}

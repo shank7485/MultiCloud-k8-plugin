@@ -14,9 +14,21 @@ limitations under the License.
 package main
 
 import (
+	"flag"
+	"path/filepath"
+
 	"github.com/shank7485/k8-plugin-multicloud/api"
+	"k8s.io/client-go/util/homedir"
 )
 
 func main() {
-	api.Start()
+	var kubeconfig string
+
+	home := homedir.HomeDir()
+	if home != "" {
+		kubeconfig = *flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	}
+	flag.Parse()
+
+	api.Start(kubeconfig)
 }
