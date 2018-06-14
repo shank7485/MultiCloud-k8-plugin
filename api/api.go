@@ -24,16 +24,16 @@ import (
 )
 
 // Start VNFInstance WebService
-func Start() {
-	service, err := NewVNFInstanceService("")
+func Start(kubeconfig string) {
+	service, err := NewVNFInstanceService(kubeconfig)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Creation of a service error")
 		log.Panic(werr)
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/v1/vnf_instances", service.CreateVNF).Methods("POST")
-	router.HandleFunc("/v1/vnf_instances", service.ListVNF).Methods("GET")
+	router.HandleFunc("/v1/vnf_instances", service.Create).Methods("POST")
+	router.HandleFunc("/v1/vnf_instances", service.List).Methods("GET")
 
 	loggedRouter := handlers.LoggingHandler(os.Stdout, router)
 	log.Println("[INFO] Started Kubernetes Multicloud API")
