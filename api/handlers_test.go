@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package api_test
+package api
 
 import (
 	"bytes"
@@ -19,7 +19,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	. "github.com/shank7485/k8-plugin-multicloud/api"
 	appsV1 "k8s.io/api/apps/v1"
 )
 

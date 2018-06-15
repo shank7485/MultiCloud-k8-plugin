@@ -11,15 +11,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package krd_test
+package krd
 
 import (
 	"testing"
 
 	appsV1 "k8s.io/api/apps/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	. "github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
 type mockClient struct {
