@@ -10,7 +10,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package utils
+package utils_test
 
 import (
 	"reflect"
@@ -19,11 +19,13 @@ import (
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	. "github.com/shank7485/k8-plugin-multicloud/utils"
 )
 
 func TestDownloadDeploymentInfo(t *testing.T) {
-	fn := func(t *testing.T) {
-		download = func(url string) ([]byte, error) {
+	t.Run("Succesful download deployment information", func(t *testing.T) {
+		Download = func(url string) ([]byte, error) {
 			body := `
 apiVersion: apps/v1
 kind: Deployment
@@ -39,7 +41,6 @@ spec:
       - name: sise
         image: mhausenblas/simpleservice:0.5.0
 `
-
 			return []byte(body), nil
 		}
 		expected := &appsV1.Deployment{
@@ -74,6 +75,5 @@ spec:
 		if !reflect.DeepEqual(expected, result) {
 			t.Fatalf("TestDownloadDeploymentInfo returned:\n result=%v\n expected=%v", result, expected)
 		}
-	}
-	t.Run("Standard", fn)
+	})
 }

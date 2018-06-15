@@ -39,25 +39,38 @@ type VNFInstanceClientInterface interface {
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
 func NewVNFInstanceService(kubeConfigPath string) (*VNFInstanceService, error) {
+	client, err := GetVNFClient(kubeConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	return &VNFInstanceService{
+		Client: client,
+	}, nil
+}
+
+// GetVNFClient retrieve the client used to communicate with a Kubernetes Cluster
+var GetVNFClient = func(kubeConfigPath string) (VNFInstanceClientInterface, error) {
 	var client VNFInstanceClientInterface
 
 	client, err := krd.NewClient(kubeConfigPath)
 	if err != nil {
 		return nil, err
 	}
-	vnfService := &VNFInstanceService{
-		Client: client,
-	}
-	return vnfService, nil
+	return client, err
 }
 
 // Create a VNF Instance based on the Resquest
 func (s *VNFInstanceService) Create(w http.ResponseWriter, r *http.Request) {
 	var resource VNFInstanceResource
 
+	if r.Body == nil {
+		http.Error(w, "Body empty", http.StatusBadRequest)
+		return
+	}
+
 	err := json.NewDecoder(r.Body).Decode(&resource)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

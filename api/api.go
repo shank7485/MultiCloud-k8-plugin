@@ -15,27 +15,22 @@ package api
 
 import (
 	"log"
-	"net/http"
-	"os"
 
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
 )
 
-// Start VNFInstance WebService
-func Start(kubeconfig string) {
+// NewRouter creates a router instance that serves the VNFInstance web methods
+func NewRouter(kubeconfig string) (s *mux.Router) {
 	service, err := NewVNFInstanceService(kubeconfig)
 	if err != nil {
-		werr := pkgerrors.Wrap(err, "Creation of a service error")
-		log.Panic(werr)
+		log.Panic(pkgerrors.Wrap(err, "Creation of a service error"))
 	}
-
 	router := mux.NewRouter()
-	router.HandleFunc("/v1/vnf_instances", service.Create).Methods("POST")
-	router.HandleFunc("/v1/vnf_instances", service.List).Methods("GET")
 
-	loggedRouter := handlers.LoggingHandler(os.Stdout, router)
-	log.Println("[INFO] Started Kubernetes Multicloud API")
-	log.Fatal(http.ListenAndServe(":8081", loggedRouter)) // Remove hardcode.
+	vnfInstanceHandler := router.PathPrefix("/v1/vnf_instances").Subrouter()
+	vnfInstanceHandler.HandleFunc("/", service.Create).Methods("POST").Name("VNFCreation")
+	vnfInstanceHandler.HandleFunc("/", service.List).Methods("GET")
+
+	return router
 }

@@ -15,8 +15,12 @@ package main
 
 import (
 	"flag"
+	"log"
+	"net/http"
+	"os"
 	"path/filepath"
 
+	"github.com/gorilla/handlers"
 	"github.com/shank7485/k8-plugin-multicloud/api"
 	"k8s.io/client-go/util/homedir"
 )
@@ -30,5 +34,8 @@ func main() {
 	}
 	flag.Parse()
 
-	api.Start(kubeconfig)
+	router := api.NewRouter(kubeconfig)
+	loggedRouter := handlers.LoggingHandler(os.Stdout, router)
+	log.Println("Starting Kubernetes Multicloud API")
+	log.Fatal(http.ListenAndServe(":8081", loggedRouter)) // Remove hardcode.
 }

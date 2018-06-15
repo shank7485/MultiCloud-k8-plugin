@@ -39,7 +39,7 @@ type ClientDeploymentInterface interface {
 func NewClient(kubeconfigPath string) (*Client, error) {
 	var deploymentClient ClientDeploymentInterface
 
-	deploymentClient, err := getKubeClient(kubeconfigPath)
+	deploymentClient, err := GetKubeClient(kubeconfigPath)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,8 @@ func NewClient(kubeconfigPath string) (*Client, error) {
 	return client, nil
 }
 
-var getKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
+// GetKubeClient loads the Kubernetes configuation values stored into the local configuration file
+var GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
 	var result ClientDeploymentInterface
 
 	if configPath == "" {
