@@ -9,4 +9,4 @@ build:
 	go build -o $(GOPATH)/target/k8plugin $(CURDIR)/../cmd/main.go
 
 run_tests:
-	cd ../ && go test ./... -cover
+	cd ../ && go test -v ./... -cover

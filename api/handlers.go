@@ -39,33 +39,46 @@ type VNFInstanceClientInterface interface {
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
 func NewVNFInstanceService(kubeConfigPath string) (*VNFInstanceService, error) {
+	client, err := GetVNFClient(kubeConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	return &VNFInstanceService{
+		Client: client,
+	}, nil
+}
+
+// GetVNFClient retrieve the client used to communicate with a Kubernetes Cluster
+var GetVNFClient = func(kubeConfigPath string) (VNFInstanceClientInterface, error) {
 	var client VNFInstanceClientInterface
 
 	client, err := krd.NewClient(kubeConfigPath)
 	if err != nil {
 		return nil, err
 	}
-	vnfService := &VNFInstanceService{
-		Client: client,
-	}
-	return vnfService, nil
+	return client, err
 }
 
-// Create a VNF Instance based on the Resquest
+// Create is the POST method creates a new VNF instance resource.
 func (s *VNFInstanceService) Create(w http.ResponseWriter, r *http.Request) {
-	var resource VNFInstanceResource
+	var resource CreateVnfRequest
+
+	if r.Body == nil {
+		http.Error(w, "Body empty", http.StatusBadRequest)
+		return
+	}
 
 	err := json.NewDecoder(r.Body).Decode(&resource)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
 	uuid := uuid.NewUUID()
 	// Persist in AAI database.
-	log.Println(resource.CsarArtificateID + "_" + string(uuid))
+	log.Println(resource.CsarID + "_" + string(uuid))
 
-	deployment, err := utils.GetDeploymentInfo(resource.CsarArtificateURL)
+	deployment, err := utils.GetDeploymentInfo(resource.CsarURL)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get Deployment information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)

@@ -11,45 +11,46 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package krd
+package krd_test
 
 import (
 	"testing"
 
 	appsV1 "k8s.io/api/apps/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	. "github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
-type MockClient struct {
+type mockClient struct {
 	create func() (*appsV1.Deployment, error)
 	list   func() (*appsV1.DeploymentList, error)
 }
 
-func (c *MockClient) Create(deployment *appsV1.Deployment) (*appsV1.Deployment, error) {
+func (c *mockClient) Create(deployment *appsV1.Deployment) (*appsV1.Deployment, error) {
 	if c.create != nil {
 		return c.create()
 	}
 	return nil, nil
 }
 
-func (c *MockClient) List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error) {
+func (c *mockClient) List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error) {
 	if c.create != nil {
 		return c.list()
 	}
 	return nil, nil
 }
 
-func TestCreate(t *testing.T) {
-	fn := func(t *testing.T) {
+func TestClientCreateMethod(t *testing.T) {
+	t.Run("Succesful deployment creation", func(t *testing.T) {
 		expected := "sise-deploy"
 		input := &appsV1.Deployment{
 			ObjectMeta: metaV1.ObjectMeta{
 				Name: expected,
 			},
 		}
-		getKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
-
-			return &MockClient{
+		GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
+			return &mockClient{
 				create: func() (*appsV1.Deployment, error) {
 					return input, nil
 				},
@@ -57,12 +58,11 @@ func TestCreate(t *testing.T) {
 		}
 		client, err := NewClient("")
 		if err != nil {
-			t.Fatalf("TestCreate returned an error (%s)", err)
+			t.Fatalf("TestDeploymentCreation returned an error (%s)", err)
 		}
 		result, err := client.Create(input)
 		if result != expected {
-			t.Fatalf("TestCreate returned:\n result=%v\n expected=%v", result, expected)
+			t.Fatalf("TestDeploymentCreation returned:\n result=%v\n expected=%v", result, expected)
 		}
-	}
-	t.Run("Standard", fn)
+	})
 }

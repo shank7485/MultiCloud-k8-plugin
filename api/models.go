@@ -13,12 +13,14 @@ limitations under the License.
 
 package api
 
-// VNFInstanceResource contains the fields required for the VNF Creation
-type VNFInstanceResource struct {
-	CsarArtificateID  string 		`json:"csar_artificate_id"`
-	CsarArtificateURL string 		`json:"csar_artificate_url"`
-	OOFParams         OOFParameters `json:"oof_parameters"`
-	InstanceID        string        `json:"instance_id"`
+// CreateVnfRequest contains the VNF creation parameters
+type CreateVnfRequest struct {
+	CsarID      string        `json:"csar_id"`
+	CsarURL     string        `json:"csar_url"`
+	OOFParams   OOFParameters `json:"oof_parameters"`
+	ID          string        `json:"vnfdId"`
+	Name        string        `json:"vnfInstanceName"`
+	Description string        `json:"vnfInstanceDescription"`
 }
 
 // OOFParameters contains additional information required for the VNF instance

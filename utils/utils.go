@@ -22,7 +22,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
-var download = func(url string) ([]byte, error) {
+// Download the raw body of specific URL
+var Download = func(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "Get Body error")
@@ -39,7 +40,7 @@ var download = func(url string) ([]byte, error) {
 
 // GetDeploymentInfo retrieves the YAML file from an external source
 func GetDeploymentInfo(url string) (*appsV1.Deployment, error) {
-	rawYAMLbytes, err := download(url)
+	rawYAMLbytes, err := Download(url)
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "Get YAML file error")
 	}
