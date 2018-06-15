@@ -6,9 +6,9 @@
 
     ```
     {
-        "csar_artificate_id": "1",
-        "csar_artificate_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
-        "instance_id": "100",
+        "csar_id": "1",
+        "csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
+        "vnfdId": "100",
         "oof_parameters": {
             "key_values": {
                 "key1": "value1",

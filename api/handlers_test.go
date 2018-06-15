@@ -66,9 +66,9 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 func TestVNFInstanceCreation(t *testing.T) {
 	t.Run("Succesful VNF", func(t *testing.T) {
 		payload := []byte(`{
-			"csar_artificate_id": "1",
-			"csar_artificate_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
-			"instance_id": "100",
+			"csar_id": "1",
+			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
+			"id": "100",
 			"oof_parameters": {
 				"key_values": {
 					"key1": "value1",
@@ -96,6 +96,6 @@ func TestVNFInstanceCreation(t *testing.T) {
 		payload := []byte("invalid")
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
 		response := executeRequest(req, "test")
-		checkResponseCode(t, http.StatusBadRequest, response.Code)
+		checkResponseCode(t, http.StatusUnprocessableEntity, response.Code)
 	})
 }
