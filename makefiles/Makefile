@@ -10,3 +10,6 @@ build:
 
 run_tests:
 	cd ../ && go test -v ./... -cover
+
+format:
+	cd ../ && go fmt ./...
