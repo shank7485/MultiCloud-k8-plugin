@@ -133,33 +133,23 @@ func (s *VNFInstanceService) List(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// Delete existing VNF instances created in a given Kubernetes Cluster
+// Delete method terminates an individual subscription.
 func (s *VNFInstanceService) Delete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	name := vars["name"]
+	id := vars["vnfInstanceId"]
 
 	deletePolicy := metaV1.DeletePropagationForeground
 	deleteOptions := &metaV1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	}
 
-	err := s.Client.Delete(name, deleteOptions)
+	err := s.Client.Delete(id, deleteOptions)
 	if err != nil {
+		// TODO (electrocucaracha): Determines the existence of the resource
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	resp := GeneralResponse{
-		Response: "Deletion complete:" + name,
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-
-	err = json.NewEncoder(w).Encode(resp)
-	if err != nil {
-		werr := pkgerrors.Wrap(err, "Parsing output of delete VNF error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-	}
+	w.WriteHeader(http.StatusNoContent)
 }
