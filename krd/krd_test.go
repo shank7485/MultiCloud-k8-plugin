@@ -23,6 +23,7 @@ import (
 type mockClient struct {
 	create func() (*appsV1.Deployment, error)
 	list   func() (*appsV1.DeploymentList, error)
+	delete func() error
 }
 
 func (c *mockClient) Create(deployment *appsV1.Deployment) (*appsV1.Deployment, error) {
@@ -37,6 +38,13 @@ func (c *mockClient) List(opts metaV1.ListOptions) (*appsV1.DeploymentList, erro
 		return c.list()
 	}
 	return nil, nil
+}
+
+func (c *mockClient) Delete(name string, options *metaV1.DeleteOptions) error {
+	if c.delete() != nil {
+		return c.delete()
+	}
+	return nil
 }
 
 func TestClientCreateMethod(t *testing.T) {
@@ -61,6 +69,41 @@ func TestClientCreateMethod(t *testing.T) {
 		result, err := client.Create(input)
 		if result != expected {
 			t.Fatalf("TestDeploymentCreation returned:\n result=%v\n expected=%v", result, expected)
+		}
+	})
+}
+
+func TestClientDeleteMethod(t *testing.T) {
+	t.Run("Succesful deployment deletion", func(t *testing.T) {
+		expected := "test-deployment"
+		input := &appsV1.Deployment{
+			ObjectMeta: metaV1.ObjectMeta{
+				Name: expected,
+			},
+		}
+		GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
+			return &mockClient{
+				create: func() (*appsV1.Deployment, error) {
+					return input, nil
+				},
+				delete: func() error {
+					return nil
+				},
+			}, nil
+		}
+		client, err := NewClient("")
+		if err != nil {
+			t.Fatalf("TestDeploymentDeletion returned an error (%s)", err)
+		}
+		result, err := client.Create(input)
+		if result != expected {
+			t.Fatalf("TestDeploymentDeletion returned:\n result=%v\n expected=%v", result, expected)
+		}
+
+		deleteOpts := &metaV1.DeleteOptions{}
+		err = client.Delete("", deleteOpts)
+		if err != nil {
+			t.Fatalf("TestDeploymentDeletion returned an error (%s)", err)
 		}
 	})
 }

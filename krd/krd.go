@@ -29,10 +29,13 @@ type Client struct {
 	deploymentClient ClientDeploymentInterface
 }
 
-// ClientDeploymentInterface contains a subset of supported methods
+// ClientDeploymentInterface contains a subset of supported methods. The methods
+// present in the interface are only to satisfy the DeploymentInterface present
+// in the deployment.go of client-go library.
 type ClientDeploymentInterface interface {
 	Create(*appsV1.Deployment) (*appsV1.Deployment, error)
 	List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error)
+	Delete(name string, options *metaV1.DeleteOptions) error
 }
 
 // NewClient loads Kubernetes local configuration values into a client
@@ -80,7 +83,7 @@ func (c *Client) Create(deployment *appsV1.Deployment) (string, error) {
 	return result.GetObjectMeta().GetName(), nil
 }
 
-// List of existing deployments hosted in a specidf Kubernetes Deployment
+// List of existing deployments hosted in a specific Kubernetes Deployment
 func (c *Client) List(limit int64) (*appsV1.DeploymentList, error) {
 	opts := metaV1.ListOptions{
 		Limit: limit,
@@ -93,4 +96,17 @@ func (c *Client) List(limit int64) (*appsV1.DeploymentList, error) {
 		return nil, pkgerrors.Wrap(err, "Get VNF list error")
 	}
 	return list, nil
+}
+
+// Delete existing deployments hosting in a specific Kubernetes Deployment
+func (c *Client) Delete(name string, options *metaV1.DeleteOptions) error {
+	deletePolicy := metaV1.DeletePropagationForeground
+
+	err := c.deploymentClient.Delete("demo-deployment", &metaV1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
+	})
+	if err != nil {
+		return pkgerrors.Wrap(err, "Delete VNF error")
+	}
+	return nil
 }

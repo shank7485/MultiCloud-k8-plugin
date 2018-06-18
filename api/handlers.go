@@ -18,8 +18,10 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
 	appsV1 "k8s.io/api/apps/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
 	"github.com/shank7485/k8-plugin-multicloud/krd"
@@ -35,6 +37,7 @@ type VNFInstanceService struct {
 type VNFInstanceClientInterface interface {
 	Create(deployment *appsV1.Deployment) (string, error)
 	List(limit int64) (*appsV1.DeploymentList, error)
+	Delete(name string, options *metaV1.DeleteOptions) error
 }
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
@@ -130,9 +133,33 @@ func (s *VNFInstanceService) List(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// func DeleteVNF(w http.ResponseWriter, r *http.Request){
-// 	deletePolicy := metav1.DeletePropagationForeground
-// 	err := d.DeploymentsClient.Delete("demo-deployment", &metav1.DeleteOptions{
-// 		PropagationPolicy: &deletePolicy,
-// 	})
-// }
+// Delete existing VNF instances created in a given Kubernetes Cluster
+func (s *VNFInstanceService) Delete(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+
+	deletePolicy := metaV1.DeletePropagationForeground
+	deleteOptions := &metaV1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
+	}
+
+	err := s.Client.Delete(name, deleteOptions)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Delete VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp := GeneralResponse{
+		Response: "Deletion complete:" + name,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Parsing output of delete VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+	}
+}
