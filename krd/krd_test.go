@@ -75,17 +75,8 @@ func TestClientCreateMethod(t *testing.T) {
 
 func TestClientDeleteMethod(t *testing.T) {
 	t.Run("Succesful deployment deletion", func(t *testing.T) {
-		expected := "test-deployment"
-		input := &appsV1.Deployment{
-			ObjectMeta: metaV1.ObjectMeta{
-				Name: expected,
-			},
-		}
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
 			return &mockClient{
-				create: func() (*appsV1.Deployment, error) {
-					return input, nil
-				},
 				delete: func() error {
 					return nil
 				},
@@ -95,13 +86,9 @@ func TestClientDeleteMethod(t *testing.T) {
 		if err != nil {
 			t.Fatalf("TestDeploymentDeletion returned an error (%s)", err)
 		}
-		result, err := client.Create(input)
-		if result != expected {
-			t.Fatalf("TestDeploymentDeletion returned:\n result=%v\n expected=%v", result, expected)
-		}
 
 		deleteOpts := &metaV1.DeleteOptions{}
-		err = client.Delete("", deleteOpts)
+		err = client.Delete("test", deleteOpts)
 		if err != nil {
 			t.Fatalf("TestDeploymentDeletion returned an error (%s)", err)
 		}

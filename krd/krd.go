@@ -102,7 +102,7 @@ func (c *Client) List(limit int64) (*appsV1.DeploymentList, error) {
 func (c *Client) Delete(name string, options *metaV1.DeleteOptions) error {
 	deletePolicy := metaV1.DeletePropagationForeground
 
-	err := c.deploymentClient.Delete("demo-deployment", &metaV1.DeleteOptions{
+	err := c.deploymentClient.Delete(name, &metaV1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	})
 	if err != nil {
