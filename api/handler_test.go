@@ -25,7 +25,7 @@ import (
 
 type mockClient struct {
 	create func() (string, error)
-	list   func() (*appsV1.DeploymentList, error)
+	list   func() (*[]string, error)
 	delete func() error
 }
 
@@ -36,8 +36,8 @@ func (c *mockClient) Create(deployment *appsV1.Deployment) (string, error) {
 	return "", nil
 }
 
-func (c *mockClient) List(limit int64) (*appsV1.DeploymentList, error) {
-	if c.create != nil {
+func (c *mockClient) List(limit int64) (*[]string, error) {
+	if c.list != nil {
 		return c.list()
 	}
 	return nil, nil
@@ -105,6 +105,35 @@ func TestVNFInstanceCreation(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusUnprocessableEntity, response.Code)
+	})
+}
+
+func TestVNFInstancesRetrieval(t *testing.T) {
+	var client *mockClient
+	GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+		return client, nil
+	}
+
+	t.Run("Succesful get a list of VNF", func(t *testing.T) {
+		expected := `{"response":"Listing:test1,test2"}` + "\n"
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/", nil)
+		client = &mockClient{
+			list: func() (*[]string, error) {
+				return &[]string{"test1", "test2"}, nil
+			},
+		}
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusOK, response.Code)
+
+		if result := response.Body.String(); result != expected {
+			t.Fatalf("TestVNFInstancesRetrieval returned:\n result=%v\n expected=%v", result, expected)
+		}
+	})
+	t.Run("Get empty list", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/", nil)
+		client = &mockClient{}
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusNotFound, response.Code)
 	})
 }
 

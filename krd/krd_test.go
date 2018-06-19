@@ -14,6 +14,7 @@ limitations under the License.
 package krd
 
 import (
+	"reflect"
 	"testing"
 
 	appsV1 "k8s.io/api/apps/v1"
@@ -34,7 +35,7 @@ func (c *mockClient) Create(deployment *appsV1.Deployment) (*appsV1.Deployment, 
 }
 
 func (c *mockClient) List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error) {
-	if c.create != nil {
+	if c.list != nil {
 		return c.list()
 	}
 	return nil, nil
@@ -62,13 +63,48 @@ func TestClientCreateMethod(t *testing.T) {
 				},
 			}, nil
 		}
-		client, err := NewClient("")
+		client, _ := NewClient("")
+		result, err := client.Create(input)
 		if err != nil {
 			t.Fatalf("TestDeploymentCreation returned an error (%s)", err)
 		}
-		result, err := client.Create(input)
 		if result != expected {
 			t.Fatalf("TestDeploymentCreation returned:\n result=%v\n expected=%v", result, expected)
+		}
+	})
+}
+
+func TestClientListMethod(t *testing.T) {
+	t.Run("Succesful list of all deployments", func(t *testing.T) {
+		expected := &[]string{"test1", "test2"}
+		input := &appsV1.DeploymentList{
+			Items: []appsV1.Deployment{
+				appsV1.Deployment{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name: "test1",
+					},
+				},
+				appsV1.Deployment{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name: "test2",
+					},
+				},
+			},
+		}
+		GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
+			return &mockClient{
+				list: func() (*appsV1.DeploymentList, error) {
+					return input, nil
+				},
+			}, nil
+		}
+		client, _ := NewClient("")
+		result, err := client.List(10)
+		if err != nil {
+			t.Fatalf("TestClientListMethod returned an error (%s)", err)
+		}
+		if !reflect.DeepEqual(expected, result) {
+			t.Fatalf("TestClientListMethod returned:\n result=%v\n expected=%v", result, expected)
 		}
 	})
 }
@@ -82,13 +118,9 @@ func TestClientDeleteMethod(t *testing.T) {
 				},
 			}, nil
 		}
-		client, err := NewClient("")
-		if err != nil {
-			t.Fatalf("TestDeploymentDeletion returned an error (%s)", err)
-		}
-
+		client, _ := NewClient("")
 		deleteOpts := &metaV1.DeleteOptions{}
-		err = client.Delete("test", deleteOpts)
+		err := client.Delete("test", deleteOpts)
 		if err != nil {
 			t.Fatalf("TestDeploymentDeletion returned an error (%s)", err)
 		}

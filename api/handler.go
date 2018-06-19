@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
@@ -36,7 +37,7 @@ type VNFInstanceService struct {
 // VNFInstanceClientInterface has methods to work with VNF Instance resources.
 type VNFInstanceClientInterface interface {
 	Create(deployment *appsV1.Deployment) (string, error)
-	List(limit int64) (*appsV1.DeploymentList, error)
+	List(limit int64) (*[]string, error)
 	Delete(name string, options *metaV1.DeleteOptions) error
 }
 
@@ -111,19 +112,25 @@ func (s *VNFInstanceService) Create(w http.ResponseWriter, r *http.Request) {
 
 // List the existing VNF instances created in a given Kubernetes cluster
 func (s *VNFInstanceService) List(w http.ResponseWriter, r *http.Request) {
-	_, err := s.Client.List(int64(10)) // TODO (electrocucaracha): export this as configuration value
+	limit := int64(10) // TODO (electrocucaracha): export this as configuration value
+
+	deployments, err := s.Client.List(limit)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF list error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	if deployments == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 	resp := GeneralResponse{
-		Response: "Listing:",
+		Response: "Listing:" + strings.Join(*deployments, ","),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(http.StatusOK)
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
