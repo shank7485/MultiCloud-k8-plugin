@@ -95,7 +95,7 @@ func (c *Client) List(limit int64) (*[]string, error) {
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "Get VNF list error")
 	}
-	result := make([]string, 0)
+	result := make([]string, 0, limit)
 	if list != nil {
 		for _, deployment := range list.Items {
 			result = append(result, deployment.Name)
