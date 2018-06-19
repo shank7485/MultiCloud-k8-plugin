@@ -84,7 +84,7 @@ func (c *Client) Create(deployment *appsV1.Deployment) (string, error) {
 }
 
 // List of existing deployments hosted in a specific Kubernetes Deployment
-func (c *Client) List(limit int64) (*appsV1.DeploymentList, error) {
+func (c *Client) List(limit int64) (*[]string, error) {
 	opts := metaV1.ListOptions{
 		Limit: limit,
 	}
@@ -95,14 +95,20 @@ func (c *Client) List(limit int64) (*appsV1.DeploymentList, error) {
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "Get VNF list error")
 	}
-	return list, nil
+	result := make([]string, 0, limit)
+	if list != nil {
+		for _, deployment := range list.Items {
+			result = append(result, deployment.Name)
+		}
+	}
+	return &result, nil
 }
 
 // Delete existing deployments hosting in a specific Kubernetes Deployment
 func (c *Client) Delete(name string, options *metaV1.DeleteOptions) error {
 	deletePolicy := metaV1.DeletePropagationForeground
 
-	err := c.deploymentClient.Delete("demo-deployment", &metaV1.DeleteOptions{
+	err := c.deploymentClient.Delete(name, &metaV1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	})
 	if err != nil {

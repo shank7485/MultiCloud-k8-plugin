@@ -25,7 +25,7 @@ import (
 
 type mockClient struct {
 	create func() (string, error)
-	list   func() (*appsV1.DeploymentList, error)
+	list   func() (*[]string, error)
 	delete func() error
 }
 
@@ -36,8 +36,8 @@ func (c *mockClient) Create(deployment *appsV1.Deployment) (string, error) {
 	return "", nil
 }
 
-func (c *mockClient) List(limit int64) (*appsV1.DeploymentList, error) {
-	if c.create != nil {
+func (c *mockClient) List(limit int64) (*[]string, error) {
+	if c.list != nil {
 		return c.list()
 	}
 	return nil, nil
@@ -50,14 +50,7 @@ func (c *mockClient) Delete(name string, options *metaV1.DeleteOptions) error {
 	return nil
 }
 
-func executeRequest(req *http.Request, createResponse string) *httptest.ResponseRecorder {
-	GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
-		return &mockClient{
-			create: func() (string, error) {
-				return createResponse, nil
-			},
-		}, nil
-	}
+func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	router := NewRouter("")
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
@@ -72,7 +65,7 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 }
 
 func TestVNFInstanceCreation(t *testing.T) {
-	t.Run("Succesful VNF", func(t *testing.T) {
+	t.Run("Succesful create a VNF", func(t *testing.T) {
 		payload := []byte(`{
 			"csar_id": "1",
 			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
@@ -87,7 +80,14 @@ func TestVNFInstanceCreation(t *testing.T) {
 		expected := `{"response":"Created Deployment:test"}` + "\n"
 
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
-		response := executeRequest(req, "test")
+		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+			return &mockClient{
+				create: func() (string, error) {
+					return "test", nil
+				},
+			}, nil
+		}
+		response := executeRequest(req)
 		checkResponseCode(t, http.StatusCreated, response.Code)
 
 		if result := response.Body.String(); result != expected {
@@ -96,14 +96,60 @@ func TestVNFInstanceCreation(t *testing.T) {
 	})
 	t.Run("Missing parameters failure", func(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", nil)
-		response := executeRequest(req, "")
+		response := executeRequest(req)
 
 		checkResponseCode(t, http.StatusBadRequest, response.Code)
 	})
 	t.Run("Invalid JSON request format", func(t *testing.T) {
 		payload := []byte("invalid")
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
-		response := executeRequest(req, "test")
+		response := executeRequest(req)
 		checkResponseCode(t, http.StatusUnprocessableEntity, response.Code)
 	})
+}
+
+func TestVNFInstancesRetrieval(t *testing.T) {
+	var client *mockClient
+	GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+		return client, nil
+	}
+
+	t.Run("Succesful get a list of VNF", func(t *testing.T) {
+		expected := `{"response":"Listing:test1,test2"}` + "\n"
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/", nil)
+		client = &mockClient{
+			list: func() (*[]string, error) {
+				return &[]string{"test1", "test2"}, nil
+			},
+		}
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusOK, response.Code)
+
+		if result := response.Body.String(); result != expected {
+			t.Fatalf("TestVNFInstancesRetrieval returned:\n result=%v\n expected=%v", result, expected)
+		}
+	})
+	t.Run("Get empty list", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/", nil)
+		client = &mockClient{}
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusNotFound, response.Code)
+	})
+}
+
+func TestVNFInstanceDeletion(t *testing.T) {
+	t.Run("Succesful delete a VNF", func(t *testing.T) {
+		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/1", nil)
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusNoContent, response.Code)
+
+		if result := response.Body.String(); result != "" {
+			t.Fatalf("TestVNFInstanceDeletion returned:\n result=%v\n expected=%v", result, "")
+		}
+	})
+	// t.Run("Malformed delete request", func(t *testing.T) {
+	// 	req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/foo", nil)
+	// 	response := executeRequest(req)
+	// 	checkResponseCode(t, http.StatusBadRequest, response.Code)
+	// })
 }
