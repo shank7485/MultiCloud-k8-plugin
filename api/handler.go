@@ -196,6 +196,7 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 	err = s.Client.Update(deployment)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Update VNF error")
+
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}

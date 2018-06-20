@@ -155,7 +155,11 @@ func TestClientUpdateMethod(t *testing.T) {
 
 		err := client.Update(input)
 		if err != nil {
+<<<<<<< HEAD
 			t.Fatalf("TestDeploymentUpdate returned an error (%s)", err)
+=======
+			t.Fatalf("TestDeploymentCreation returned an error (%s)", err)
+>>>>>>> 83e5da4e5430eb6a89644b72f150e7a583eb89e3
 		}
 	})
 }
