@@ -15,6 +15,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -27,6 +28,7 @@ type mockClient struct {
 	create func() (string, error)
 	list   func() (*[]string, error)
 	delete func() error
+	update func() error
 }
 
 func (c *mockClient) Create(deployment *appsV1.Deployment) (string, error) {
@@ -44,6 +46,13 @@ func (c *mockClient) List(limit int64) (*[]string, error) {
 }
 
 func (c *mockClient) Delete(name string, options *metaV1.DeleteOptions) error {
+	if c.delete != nil {
+		return c.delete()
+	}
+	return nil
+}
+
+func (c *mockClient) Update(deployment *appsV1.Deployment) error {
 	if c.delete != nil {
 		return c.delete()
 	}
@@ -77,7 +86,10 @@ func TestVNFInstanceCreation(t *testing.T) {
 				}
 			}
 		}`)
-		expected := `{"response":"Created Deployment:test"}` + "\n"
+		expected := &CreateVnfResponse{
+			Name: "test",
+		}
+		var result CreateVnfResponse
 
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
 		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
@@ -90,8 +102,13 @@ func TestVNFInstanceCreation(t *testing.T) {
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusCreated, response.Code)
 
-		if result := response.Body.String(); result != expected {
-			t.Fatalf("TestVNFInstanceCreation returned:\n result=%v\n expected=%v", result, expected)
+		err := json.NewDecoder(response.Body).Decode(&result)
+		if err != nil {
+			t.Fatalf("TestVNFInstanceCreation returned:\n result=%v\n expected=%v", err, expected.Name)
+		}
+
+		if result.Name != expected.Name {
+			t.Fatalf("TestVNFInstanceCreation returned:\n result=%v\n expected=%v", result.Name, expected.Name)
 		}
 	})
 	t.Run("Missing parameters failure", func(t *testing.T) {
@@ -152,4 +169,37 @@ func TestVNFInstanceDeletion(t *testing.T) {
 	// 	response := executeRequest(req)
 	// 	checkResponseCode(t, http.StatusBadRequest, response.Code)
 	// })
+}
+
+func TestVNFInstanceUpdate(t *testing.T) {
+	t.Run("Succesful update a VNF", func(t *testing.T) {
+		payload := []byte(`{
+			"csar_id": "1",
+			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
+			"id": "100",
+			"oof_parameters": {
+				"key_values": {
+					"key1": "value1",
+					"key2": "value2"
+				}
+			}
+		}`)
+		var result UpdateVnfResponse
+
+		req, _ := http.NewRequest("PUT", "/v1/vnf_instances/1", bytes.NewBuffer(payload))
+		response := executeRequest(req)
+
+		expected := &UpdateVnfResponse{
+			DeploymentID: "1",
+		}
+
+		err := json.NewDecoder(response.Body).Decode(&result)
+		if err != nil {
+			t.Fatalf("TestVNFInstanceUpdate returned:\n result=%v\n expected=%v", err, expected.DeploymentID)
+		}
+
+		if result.DeploymentID != expected.DeploymentID {
+			t.Fatalf("TestVNFInstanceUpdate returned:\n result=%v\n expected=%v", result.DeploymentID, expected.DeploymentID)
+		}
+	})
 }
