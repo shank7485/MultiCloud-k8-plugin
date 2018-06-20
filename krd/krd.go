@@ -31,11 +31,7 @@ type Client struct {
 
 // ClientDeploymentInterface contains a subset of supported methods. The methods
 // present in the interface are only to satisfy the DeploymentInterface present
-<<<<<<< HEAD
 // in the deployment.go of client-go library. Whatever method implemented with the
-=======
-// in the deployment.go of client-go library. Whatver method implemented with the
->>>>>>> 83e5da4e5430eb6a89644b72f150e7a583eb89e3
 // Client struct in this file does not implement the following interface.
 type ClientDeploymentInterface interface {
 	Create(*appsV1.Deployment) (*appsV1.Deployment, error)
