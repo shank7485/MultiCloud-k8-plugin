@@ -119,8 +119,7 @@ func TestClientDeleteMethod(t *testing.T) {
 			}, nil
 		}
 		client, _ := NewClient("")
-		deleteOpts := &metaV1.DeleteOptions{}
-		err := client.Delete("test", deleteOpts)
+		err := client.Delete("test")
 		if err != nil {
 			t.Fatalf("TestDeploymentDeletion returned an error (%s)", err)
 		}

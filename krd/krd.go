@@ -105,7 +105,7 @@ func (c *Client) List(limit int64) (*[]string, error) {
 }
 
 // Delete existing deployments hosting in a specific Kubernetes Deployment
-func (c *Client) Delete(name string, options *metaV1.DeleteOptions) error {
+func (c *Client) Delete(name string) error {
 	deletePolicy := metaV1.DeletePropagationForeground
 
 	err := c.deploymentClient.Delete(name, &metaV1.DeleteOptions{

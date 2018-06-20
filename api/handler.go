@@ -22,7 +22,6 @@ import (
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
 	appsV1 "k8s.io/api/apps/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
 	"github.com/shank7485/k8-plugin-multicloud/krd"
@@ -38,7 +37,7 @@ type VNFInstanceService struct {
 type VNFInstanceClientInterface interface {
 	Create(deployment *appsV1.Deployment) (string, error)
 	List(limit int64) (*[]string, error)
-	Delete(name string, options *metaV1.DeleteOptions) error
+	Delete(name string) error
 }
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
@@ -143,14 +142,8 @@ func (s *VNFInstanceService) List(w http.ResponseWriter, r *http.Request) {
 // Delete method terminates an individual subscription.
 func (s *VNFInstanceService) Delete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := vars["vnfInstanceId"]
 
-	deletePolicy := metaV1.DeletePropagationForeground
-	deleteOptions := &metaV1.DeleteOptions{
-		PropagationPolicy: &deletePolicy,
-	}
-
-	err := s.Client.Delete(id, deleteOptions)
+	err := s.Client.Delete(vars["vnfInstanceId"])
 	if err != nil {
 		// TODO (electrocucaracha): Determines the existence of the resource
 		werr := pkgerrors.Wrap(err, "Delete VNF error")

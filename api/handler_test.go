@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	appsV1 "k8s.io/api/apps/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type mockClient struct {
@@ -43,7 +42,7 @@ func (c *mockClient) List(limit int64) (*[]string, error) {
 	return nil, nil
 }
 
-func (c *mockClient) Delete(name string, options *metaV1.DeleteOptions) error {
+func (c *mockClient) Delete(name string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
