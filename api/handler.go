@@ -23,6 +23,7 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	appsV1 "k8s.io/api/apps/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
 	"github.com/shank7485/k8-plugin-multicloud/krd"
@@ -39,6 +40,7 @@ type VNFInstanceClientInterface interface {
 	Create(deployment *appsV1.Deployment) (string, error)
 	List(limit int64) (*[]string, error)
 	Delete(name string, options *metaV1.DeleteOptions) error
+	Update(deployment *appsV1.Deployment) error
 }
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
@@ -63,8 +65,8 @@ var GetVNFClient = func(kubeConfigPath string) (VNFInstanceClientInterface, erro
 	return client, err
 }
 
-// Create is the POST method creates a new VNF instance resource.
-func (s *VNFInstanceService) Create(w http.ResponseWriter, r *http.Request) {
+// CreateHandler is the POST method creates a new VNF instance resource.
+func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	var resource CreateVnfRequest
 
 	if r.Body == nil {
@@ -83,6 +85,8 @@ func (s *VNFInstanceService) Create(w http.ResponseWriter, r *http.Request) {
 	log.Println(resource.CsarID + "_" + string(uuid))
 
 	deployment, err := utils.GetDeploymentInfo(resource.CsarURL)
+	deployment.SetUID(types.UID(resource.CsarID) + types.UID("_") + uuid)
+
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get Deployment information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -96,8 +100,9 @@ func (s *VNFInstanceService) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := GeneralResponse{
-		Response: "Created Deployment:" + name,
+	resp := CreateVnfResponse{
+		DeploymentID: resource.CsarID + "_" + string(uuid),
+		Name:         name,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -110,8 +115,8 @@ func (s *VNFInstanceService) Create(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// List the existing VNF instances created in a given Kubernetes cluster
-func (s *VNFInstanceService) List(w http.ResponseWriter, r *http.Request) {
+// ListHandler the existing VNF instances created in a given Kubernetes cluster
+func (s *VNFInstanceService) ListHandler(w http.ResponseWriter, r *http.Request) {
 	limit := int64(10) // TODO (electrocucaracha): export this as configuration value
 
 	deployments, err := s.Client.List(limit)
@@ -140,8 +145,8 @@ func (s *VNFInstanceService) List(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// Delete method terminates an individual subscription.
-func (s *VNFInstanceService) Delete(w http.ResponseWriter, r *http.Request) {
+// DeleteHandler method terminates an individual VNF instance.
+func (s *VNFInstanceService) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["vnfInstanceId"]
 
@@ -159,4 +164,53 @@ func (s *VNFInstanceService) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// UpdateHandler method to update a VNF instance.
+func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["vnfInstanceId"]
+	println(id)
+
+	var resource UpdateVnfRequest
+
+	if r.Body == nil {
+		http.Error(w, "Body empty", http.StatusBadRequest)
+		return
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&resource)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	deployment, err := utils.GetDeploymentInfo(resource.CsarURL)
+	deployment.SetUID(types.UID(id))
+
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Get Deployment information error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = s.Client.Update(deployment)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Create VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp := UpdateVnfResponse{
+		DeploymentID: id,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Parsing output of new VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+	}
 }

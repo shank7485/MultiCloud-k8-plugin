@@ -13,7 +13,7 @@ limitations under the License.
 
 package api
 
-// CreateVnfRequest contains the VNF creation parameters
+// CreateVnfRequest contains the VNF creation request parameters
 type CreateVnfRequest struct {
 	CsarID      string        `json:"csar_id"`
 	CsarURL     string        `json:"csar_url"`
@@ -23,9 +23,30 @@ type CreateVnfRequest struct {
 	Description string        `json:"vnfInstanceDescription"`
 }
 
+// CreateVnfResponse contains the VNF creation response parameters
+type CreateVnfResponse struct {
+	DeploymentID string `json:"deployment_id"`
+	Name         string `json:"name"`
+}
+
 // OOFParameters contains additional information required for the VNF instance
 type OOFParameters struct {
 	KeyValues map[string]string `json:"key_values"`
+}
+
+// UpdateVnfRequest contains the VNF creation parameters
+type UpdateVnfRequest struct {
+	CsarID      string        `json:"csar_id"`
+	CsarURL     string        `json:"csar_url"`
+	OOFParams   OOFParameters `json:"oof_parameters"`
+	ID          string        `json:"vnfdId"`
+	Name        string        `json:"vnfInstanceName"`
+	Description string        `json:"vnfInstanceDescription"`
+}
+
+// UpdateVnfResponse contains the VNF update response parameters
+type UpdateVnfResponse struct {
+	DeploymentID string `json:"deployment_id"`
 }
 
 // GeneralResponse is a generic response

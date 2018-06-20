@@ -31,11 +31,13 @@ type Client struct {
 
 // ClientDeploymentInterface contains a subset of supported methods. The methods
 // present in the interface are only to satisfy the DeploymentInterface present
-// in the deployment.go of client-go library.
+// in the deployment.go of client-go library. Whatver method implemented with the
+// Client struct in this file does not implement the following interface.
 type ClientDeploymentInterface interface {
 	Create(*appsV1.Deployment) (*appsV1.Deployment, error)
 	List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error)
 	Delete(name string, options *metaV1.DeleteOptions) error
+	Update(*appsV1.Deployment) (*appsV1.Deployment, error)
 }
 
 // NewClient loads Kubernetes local configuration values into a client
@@ -72,6 +74,8 @@ var GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
 	result = clientset.AppsV1().Deployments("default")
 	return result, nil
 }
+
+// The following methods implement the interface VNFInstanceClientInterface.
 
 // Create deployment object in a specific Kubernetes Deployment
 func (c *Client) Create(deployment *appsV1.Deployment) (string, error) {
@@ -113,6 +117,15 @@ func (c *Client) Delete(name string, options *metaV1.DeleteOptions) error {
 	})
 	if err != nil {
 		return pkgerrors.Wrap(err, "Delete VNF error")
+	}
+	return nil
+}
+
+// Update existing deployments hosting in a specific Kubernetes Deployment
+func (c *Client) Update(deployment *appsV1.Deployment) error {
+	_, err := c.deploymentClient.Update(deployment)
+	if err != nil {
+		return pkgerrors.Wrap(err, "Update VNF error")
 	}
 	return nil
 }

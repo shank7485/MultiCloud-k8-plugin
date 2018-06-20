@@ -25,6 +25,7 @@ type mockClient struct {
 	create func() (*appsV1.Deployment, error)
 	list   func() (*appsV1.DeploymentList, error)
 	delete func() error
+	update func() (*appsV1.Deployment, error)
 }
 
 func (c *mockClient) Create(deployment *appsV1.Deployment) (*appsV1.Deployment, error) {
@@ -46,6 +47,13 @@ func (c *mockClient) Delete(name string, options *metaV1.DeleteOptions) error {
 		return c.delete()
 	}
 	return nil
+}
+
+func (c *mockClient) Update(deployment *appsV1.Deployment) (*appsV1.Deployment, error) {
+	if c.update != nil {
+		return c.update()
+	}
+	return nil, nil
 }
 
 func TestClientCreateMethod(t *testing.T) {
@@ -123,6 +131,31 @@ func TestClientDeleteMethod(t *testing.T) {
 		err := client.Delete("test", deleteOpts)
 		if err != nil {
 			t.Fatalf("TestDeploymentDeletion returned an error (%s)", err)
+		}
+	})
+}
+
+func TestClientUpdateMethod(t *testing.T) {
+	t.Run("Succesful deployment update", func(t *testing.T) {
+		oldName := "sise-deploy"
+		input := &appsV1.Deployment{
+			ObjectMeta: metaV1.ObjectMeta{
+				Name: oldName,
+			},
+		}
+		GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
+			return &mockClient{
+				update: func() (*appsV1.Deployment, error) {
+					return input, nil
+				},
+			}, nil
+		}
+		client, _ := NewClient("")
+		input.SetName("New-sise-deploy")
+
+		err := client.Update(input)
+		if err != nil {
+			t.Fatalf("TestDeploymentCreation returned an error (%s)", err)
 		}
 	})
 }
