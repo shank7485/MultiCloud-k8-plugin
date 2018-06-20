@@ -26,6 +26,7 @@ type mockClient struct {
 	create func() (string, error)
 	list   func() (*[]string, error)
 	delete func() error
+	get    func() (string, error)
 }
 
 func (c *mockClient) Create(deployment *appsV1.Deployment) (string, error) {
@@ -47,6 +48,13 @@ func (c *mockClient) Delete(name string) error {
 		return c.delete()
 	}
 	return nil
+}
+
+func (c *mockClient) Get(name string) (string, error) {
+	if c.get != nil {
+		return c.get()
+	}
+	return "", nil
 }
 
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
@@ -151,4 +159,33 @@ func TestVNFInstanceDeletion(t *testing.T) {
 	// 	response := executeRequest(req)
 	// 	checkResponseCode(t, http.StatusBadRequest, response.Code)
 	// })
+}
+
+func TestVNFInstanceRetrieval(t *testing.T) {
+	var client *mockClient
+	GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+		return client, nil
+	}
+
+	t.Run("Succesful get a VNF", func(t *testing.T) {
+		expected := `{"response":"Got Deployment:1"}` + "\n"
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/1", nil)
+		client = &mockClient{
+			get: func() (string, error) {
+				return "1", nil
+			},
+		}
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusOK, response.Code)
+
+		if result := response.Body.String(); result != expected {
+			t.Fatalf("TestVNFInstanceRetrieval returned:\n result=%v\n expected=%v", result, expected)
+		}
+	})
+	t.Run("VNF not found", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/1", nil)
+		client = &mockClient{}
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusNotFound, response.Code)
+	})
 }

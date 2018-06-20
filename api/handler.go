@@ -38,6 +38,7 @@ type VNFInstanceClientInterface interface {
 	Create(deployment *appsV1.Deployment) (string, error)
 	List(limit int64) (*[]string, error)
 	Delete(name string) error
+	Get(name string) (string, error)
 }
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
@@ -152,4 +153,33 @@ func (s *VNFInstanceService) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// Get method retrieves information about a VNF instance by reading an individual VNF instance resource.
+func (s *VNFInstanceService) Get(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	name, err := s.Client.Get(vars["vnfInstanceId"])
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Get VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+	if name == "" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	resp := GeneralResponse{
+		Response: "Got Deployment:" + name,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Parsing output of new VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+	}
 }
