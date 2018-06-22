@@ -85,16 +85,17 @@ func TestVNFInstanceCreation(t *testing.T) {
 		payload := []byte(`{
 			"csar_id": "1",
 			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
-			"vnfdId": "100",
 			"oof_parameters": {
 				"key_values": {
 					"key1": "value1",
 					"key2": "value2"
 				}
-			}
+			},
+			"vnf_instance_name": "test",
+			"vnf_instance_description": "vRouter_test_description"
 		}`)
 		expected := &CreateVnfResponse{
-			Name: "test",
+			Name: "vRouter_test",
 		}
 		var result CreateVnfResponse
 
@@ -102,7 +103,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
 			return &mockClient{
 				create: func() (string, error) {
-					return "test", nil
+					return "vRouter_test", nil
 				},
 			}, nil
 		}
@@ -129,13 +130,14 @@ func TestVNFInstanceCreation(t *testing.T) {
 	t.Run("Missing parameter failure", func(t *testing.T) {
 		payload := []byte(`{
 			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
-			"vnfdId": "100",
 			"oof_parameters": {
 				"key_values": {
 					"key1": "value1",
 					"key2": "value2"
 				}
-			}
+			},
+			"vnf_instance_name": "test",
+			"vnf_instance_description": "vRouter_test_description"
 		}`)
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
 		response := executeRequest(req)
@@ -194,13 +196,14 @@ func TestVNFInstanceUpdate(t *testing.T) {
 		payload := []byte(`{
 			"csar_id": "1",
 			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
-			"id": "100",
 			"oof_parameters": {
 				"key_values": {
 					"key1": "value1",
 					"key2": "value2"
 				}
-			}
+			},
+			"vnf_instance_name": "test",
+			"vnf_instance_description": "vRouter_test_description"
 		}`)
 		var result UpdateVnfResponse
 

@@ -69,12 +69,12 @@ var GetVNFClient = func(kubeConfigPath string) (VNFInstanceClientInterface, erro
 func validateBody(body interface{}) error {
 	switch b := body.(type) {
 	case CreateVnfRequest:
-		if b.CsarID == "" || b.CsarURL == "" || b.ID == "" {
-			werr := pkgerrors.Wrap(errors.New("Invalid Data in PUT request"), "CreateVnfRequest bad request")
+		if b.CsarID == "" || b.CsarURL == "" || b.Name == "" {
+			werr := pkgerrors.Wrap(errors.New("Invalid Data in POST request"), "CreateVnfRequest bad request")
 			return werr
 		}
 	case UpdateVnfRequest:
-		if b.CsarID == "" || b.CsarURL == "" || b.ID == "" {
+		if b.CsarID == "" || b.CsarURL == "" || b.Name == "" {
 			werr := pkgerrors.Wrap(errors.New("Invalid Data in PUT request"), "UpdateVnfRequest bad request")
 			return werr
 		}
@@ -104,7 +104,7 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Not using "_" since only "." and "-" are allowed.
-	uuidName := resource.CsarID + "." + string(uuid.NewUUID())
+	uuidName := resource.Name + "." + string(uuid.NewUUID())
 
 	// Persist in AAI database.
 	log.Println(uuidName)
@@ -128,8 +128,8 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	resp := CreateVnfResponse{
-		DeploymentID: uuidName,
-		Name:         name,
+		DeploymentID: name,
+		Name:         resource.Name,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -236,7 +236,7 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// Get method retrieves information about a VNF instance by reading an individual VNF instance resource.
+// GetHandler retrieves information about a VNF instance by reading an individual VNF instance resource.
 func (s *VNFInstanceService) GetHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 

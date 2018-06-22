@@ -18,14 +18,13 @@ type CreateVnfRequest struct {
 	CsarID      string        `json:"csar_id"`
 	CsarURL     string        `json:"csar_url"`
 	OOFParams   OOFParameters `json:"oof_parameters"`
-	ID          string        `json:"vnfdId"`
-	Name        string        `json:"vnfInstanceName"`
-	Description string        `json:"vnfInstanceDescription"`
+	Name        string        `json:"vnf_instance_name"`
+	Description string        `json:"vnf_instance_description"`
 }
 
 // CreateVnfResponse contains the VNF creation response parameters
 type CreateVnfResponse struct {
-	DeploymentID string `json:"deployment_id"`
+	DeploymentID string `json:"vnf_id"`
 	Name         string `json:"name"`
 }
 
@@ -39,14 +38,14 @@ type UpdateVnfRequest struct {
 	CsarID      string        `json:"csar_id"`
 	CsarURL     string        `json:"csar_url"`
 	OOFParams   OOFParameters `json:"oof_parameters"`
-	ID          string        `json:"vnfdId"`
-	Name        string        `json:"vnfInstanceName"`
-	Description string        `json:"vnfInstanceDescription"`
+	Name        string        `json:"vnf_instance_name"`
+	Description string        `json:"vnf_instance_description"`
 }
 
 // UpdateVnfResponse contains the VNF update response parameters
 type UpdateVnfResponse struct {
-	DeploymentID string `json:"deployment_id"`
+	DeploymentID string `json:"vnf_id"`
+	Name         string `json:"name"`
 }
 
 // GeneralResponse is a generic response
