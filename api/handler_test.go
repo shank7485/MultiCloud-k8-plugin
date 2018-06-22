@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	appsV1 "k8s.io/api/apps/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type mockClient struct {
@@ -29,6 +28,7 @@ type mockClient struct {
 	list   func() (*[]string, error)
 	delete func() error
 	update func() error
+	get    func() (string, error)
 }
 
 func (c *mockClient) Create(deployment *appsV1.Deployment) (string, error) {
@@ -45,7 +45,7 @@ func (c *mockClient) List(limit int64) (*[]string, error) {
 	return nil, nil
 }
 
-func (c *mockClient) Delete(name string, options *metaV1.DeleteOptions) error {
+func (c *mockClient) Delete(name string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
@@ -57,6 +57,13 @@ func (c *mockClient) Update(deployment *appsV1.Deployment) error {
 		return c.delete()
 	}
 	return nil
+}
+
+func (c *mockClient) Get(name string) (string, error) {
+	if c.get != nil {
+		return c.get()
+	}
+	return "", nil
 }
 
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
@@ -212,5 +219,34 @@ func TestVNFInstanceUpdate(t *testing.T) {
 		if result.DeploymentID != expected.DeploymentID {
 			t.Fatalf("TestVNFInstanceUpdate returned:\n result=%v\n expected=%v", result.DeploymentID, expected.DeploymentID)
 		}
+	})
+}
+
+func TestVNFInstanceRetrieval(t *testing.T) {
+	var client *mockClient
+	GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+		return client, nil
+	}
+
+	t.Run("Succesful get a VNF", func(t *testing.T) {
+		expected := `{"response":"Got Deployment:1"}` + "\n"
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/1", nil)
+		client = &mockClient{
+			get: func() (string, error) {
+				return "1", nil
+			},
+		}
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusOK, response.Code)
+
+		if result := response.Body.String(); result != expected {
+			t.Fatalf("TestVNFInstanceRetrieval returned:\n result=%v\n expected=%v", result, expected)
+		}
+	})
+	t.Run("VNF not found", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/1", nil)
+		client = &mockClient{}
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusNotFound, response.Code)
 	})
 }

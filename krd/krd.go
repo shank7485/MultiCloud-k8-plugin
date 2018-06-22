@@ -29,6 +29,9 @@ type Client struct {
 	deploymentClient ClientDeploymentInterface
 }
 
+// APIVersion supported for the Kubernetes Reference Deployment
+const APIVersion = "apps/v1"
+
 // ClientDeploymentInterface contains a subset of supported methods. The methods
 // present in the interface are only to satisfy the DeploymentInterface present
 // in the deployment.go of client-go library. Whatever method implemented with the
@@ -38,6 +41,7 @@ type ClientDeploymentInterface interface {
 	List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error)
 	Delete(name string, options *metaV1.DeleteOptions) error
 	Update(*appsV1.Deployment) (*appsV1.Deployment, error)
+	Get(name string, options metaV1.GetOptions) (*appsV1.Deployment, error)
 }
 
 // NewClient loads Kubernetes local configuration values into a client
@@ -92,7 +96,7 @@ func (c *Client) List(limit int64) (*[]string, error) {
 	opts := metaV1.ListOptions{
 		Limit: limit,
 	}
-	opts.APIVersion = "apps/v1"
+	opts.APIVersion = APIVersion
 	opts.Kind = "Deployment"
 
 	list, err := c.deploymentClient.List(opts)
@@ -109,7 +113,7 @@ func (c *Client) List(limit int64) (*[]string, error) {
 }
 
 // Delete existing deployments hosting in a specific Kubernetes Deployment
-func (c *Client) Delete(name string, options *metaV1.DeleteOptions) error {
+func (c *Client) Delete(name string) error {
 	deletePolicy := metaV1.DeletePropagationForeground
 
 	err := c.deploymentClient.Delete(name, &metaV1.DeleteOptions{
@@ -128,4 +132,17 @@ func (c *Client) Update(deployment *appsV1.Deployment) error {
 		return pkgerrors.Wrap(err, "Update VNF error")
 	}
 	return nil
+}
+
+// Get existing deployment hosting in a specific Kubernetes Deployment
+func (c *Client) Get(name string) (string, error) {
+	opts := metaV1.GetOptions{}
+	opts.APIVersion = APIVersion
+	opts.Kind = "Deployment"
+
+	deployment, err := c.deploymentClient.Get(name, opts)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Get VNF error")
+	}
+	return deployment.Name, nil
 }
