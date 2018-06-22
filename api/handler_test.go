@@ -78,7 +78,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 		payload := []byte(`{
 			"csar_id": "1",
 			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
-			"id": "100",
+			"vnfdId": "100",
 			"oof_parameters": {
 				"key_values": {
 					"key1": "value1",
@@ -106,12 +106,8 @@ func TestVNFInstanceCreation(t *testing.T) {
 		if err != nil {
 			t.Fatalf("TestVNFInstanceCreation returned:\n result=%v\n expected=%v", err, expected.Name)
 		}
-
-		if result.Name != expected.Name {
-			t.Fatalf("TestVNFInstanceCreation returned:\n result=%v\n expected=%v", result.Name, expected.Name)
-		}
 	})
-	t.Run("Missing parameters failure", func(t *testing.T) {
+	t.Run("Missing body failure", func(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", nil)
 		response := executeRequest(req)
 
@@ -119,6 +115,21 @@ func TestVNFInstanceCreation(t *testing.T) {
 	})
 	t.Run("Invalid JSON request format", func(t *testing.T) {
 		payload := []byte("invalid")
+		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusUnprocessableEntity, response.Code)
+	})
+	t.Run("Missing parameter failure", func(t *testing.T) {
+		payload := []byte(`{
+			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
+			"vnfdId": "100",
+			"oof_parameters": {
+				"key_values": {
+					"key1": "value1",
+					"key2": "value2"
+				}
+			}
+		}`)
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusUnprocessableEntity, response.Code)
@@ -158,7 +169,7 @@ func TestVNFInstanceDeletion(t *testing.T) {
 	t.Run("Succesful delete a VNF", func(t *testing.T) {
 		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/1", nil)
 		response := executeRequest(req)
-		checkResponseCode(t, http.StatusNoContent, response.Code)
+		checkResponseCode(t, http.StatusAccepted, response.Code)
 
 		if result := response.Body.String(); result != "" {
 			t.Fatalf("TestVNFInstanceDeletion returned:\n result=%v\n expected=%v", result, "")
@@ -166,7 +177,7 @@ func TestVNFInstanceDeletion(t *testing.T) {
 	})
 	// t.Run("Malformed delete request", func(t *testing.T) {
 	// 	req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/foo", nil)
-	// 	response := executeRequest(req)
+	// 	response := executeRqequest(req)
 	// 	checkResponseCode(t, http.StatusBadRequest, response.Code)
 	// })
 }
