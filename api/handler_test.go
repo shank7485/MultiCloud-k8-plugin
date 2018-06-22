@@ -177,7 +177,7 @@ func TestVNFInstanceDeletion(t *testing.T) {
 	})
 	// t.Run("Malformed delete request", func(t *testing.T) {
 	// 	req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/foo", nil)
-	// 	response := executeRequest(req)
+	// 	response := executeRqequest(req)
 	// 	checkResponseCode(t, http.StatusBadRequest, response.Code)
 	// })
 }
