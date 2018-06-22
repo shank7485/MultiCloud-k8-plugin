@@ -33,6 +33,7 @@ func NewRouter(kubeconfig string) (s *mux.Router) {
 	vnfInstanceHandler.HandleFunc("/", service.ListHandler).Methods("GET")
 	vnfInstanceHandler.HandleFunc("/{vnfInstanceId:[0-9]+}", service.DeleteHandler).Methods("DELETE")
 	vnfInstanceHandler.HandleFunc("/{vnfInstanceId:[0-9]+}", service.UpdateHandler).Methods("PUT")
+	vnfInstanceHandler.HandleFunc("/{vnfInstanceId:[0-9]+}", service.GetHandler).Methods("GET")
 
 	return router
 }

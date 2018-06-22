@@ -22,7 +22,6 @@ import (
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
 	appsV1 "k8s.io/api/apps/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
@@ -39,8 +38,9 @@ type VNFInstanceService struct {
 type VNFInstanceClientInterface interface {
 	Create(deployment *appsV1.Deployment) (string, error)
 	List(limit int64) (*[]string, error)
-	Delete(name string, options *metaV1.DeleteOptions) error
 	Update(deployment *appsV1.Deployment) error
+	Delete(name string) error
+	Get(name string) (string, error)
 }
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
@@ -148,14 +148,8 @@ func (s *VNFInstanceService) ListHandler(w http.ResponseWriter, r *http.Request)
 // DeleteHandler method terminates an individual VNF instance.
 func (s *VNFInstanceService) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := vars["vnfInstanceId"]
 
-	deletePolicy := metaV1.DeletePropagationForeground
-	deleteOptions := &metaV1.DeleteOptions{
-		PropagationPolicy: &deletePolicy,
-	}
-
-	err := s.Client.Delete(id, deleteOptions)
+	err := s.Client.Delete(vars["vnfInstanceId"])
 	if err != nil {
 		// TODO (electrocucaracha): Determines the existence of the resource
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
@@ -207,6 +201,35 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Parsing output of new VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+	}
+}
+
+// Get method retrieves information about a VNF instance by reading an individual VNF instance resource.
+func (s *VNFInstanceService) GetHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	name, err := s.Client.Get(vars["vnfInstanceId"])
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Get VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+	if name == "" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	resp := GeneralResponse{
+		Response: "Got Deployment:" + name,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
