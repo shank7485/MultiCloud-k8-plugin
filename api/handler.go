@@ -15,6 +15,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -65,6 +66,22 @@ var GetVNFClient = func(kubeConfigPath string) (VNFInstanceClientInterface, erro
 	return client, err
 }
 
+func validateBody(body interface{}) error {
+	switch b := body.(type) {
+	case CreateVnfRequest:
+		if b.CsarID == "" || b.CsarURL == "" || b.ID == "" {
+			werr := pkgerrors.Wrap(errors.New("Invalid Data in PUT request"), "CreateVnfRequest bad request")
+			return werr
+		}
+	case UpdateVnfRequest:
+		if b.CsarID == "" || b.CsarURL == "" || b.ID == "" {
+			werr := pkgerrors.Wrap(errors.New("Invalid Data in PUT request"), "UpdateVnfRequest bad request")
+			return werr
+		}
+	}
+	return nil
+}
+
 // CreateHandler is the POST method creates a new VNF instance resource.
 func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	var resource CreateVnfRequest
@@ -80,12 +97,22 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	uuid := uuid.NewUUID()
+	err = validateBody(resource)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	// Not using "_" since only "." and "-" are allowed.
+	uuidName := resource.CsarID + "." + string(uuid.NewUUID())
+
 	// Persist in AAI database.
-	log.Println(resource.CsarID + "_" + string(uuid))
+	log.Println(uuidName)
 
 	deployment, err := utils.GetDeploymentInfo(resource.CsarURL)
-	deployment.SetUID(types.UID(resource.CsarID) + types.UID("_") + uuid)
+	// Kubernetes Identifies resources by names. The UID setting doesn't seem to the primary ID.
+	// deployment.UID = types.UID(resource.CsarID) + types.UID("_") + uuid
+	deployment.Name = uuidName
 
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get Deployment information error")
@@ -101,7 +128,7 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	resp := CreateVnfResponse{
-		DeploymentID: resource.CsarID + "_" + string(uuid),
+		DeploymentID: uuidName,
 		Name:         name,
 	}
 
@@ -157,7 +184,7 @@ func (s *VNFInstanceService) DeleteHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 // UpdateHandler method to update a VNF instance.
