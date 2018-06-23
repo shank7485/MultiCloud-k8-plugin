@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	appsV1 "k8s.io/api/apps/v1"
@@ -152,7 +153,11 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 	}
 
 	t.Run("Succesful get a list of VNF", func(t *testing.T) {
-		expected := `{"response":"Listing:test1,test2"}` + "\n"
+		expected := &ListVnfsResponse{
+			VNFs: []string{"test1", "test2"},
+		}
+		var result ListVnfsResponse
+
 		req, _ := http.NewRequest("GET", "/v1/vnf_instances/", nil)
 		client = &mockClient{
 			list: func() (*[]string, error) {
@@ -162,8 +167,12 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusOK, response.Code)
 
-		if result := response.Body.String(); result != expected {
-			t.Fatalf("TestVNFInstancesRetrieval returned:\n result=%v\n expected=%v", result, expected)
+		err := json.NewDecoder(response.Body).Decode(&result)
+		if err != nil {
+			t.Fatalf("TestVNFInstancesRetrieval returned:\n result=%v\n expected=list", err)
+		}
+		if !reflect.DeepEqual(*expected, result) {
+			t.Fatalf("TestVNFInstancesRetrieval returned:\n result=%v\n expected=%v", result, *expected)
 		}
 	})
 	t.Run("Get empty list", func(t *testing.T) {

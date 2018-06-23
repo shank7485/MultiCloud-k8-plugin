@@ -28,6 +28,11 @@ type CreateVnfResponse struct {
 	Name         string `json:"name"`
 }
 
+// ListVnfsResponse contains the list of VNFs response parameters
+type ListVnfsResponse struct {
+	VNFs []string `json:"vnf_list"`
+}
+
 // OOFParameters contains additional information required for the VNF instance
 type OOFParameters struct {
 	KeyValues map[string]string `json:"key_values"`

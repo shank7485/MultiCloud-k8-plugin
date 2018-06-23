@@ -18,7 +18,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
@@ -157,8 +156,8 @@ func (s *VNFInstanceService) ListHandler(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	resp := GeneralResponse{
-		Response: "Listing:" + strings.Join(*deployments, ","),
+	resp := ListVnfsResponse{
+		VNFs: *deployments,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
