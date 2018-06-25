@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 BUILD_ARGS="--no-cache"
 ORG="onap"
 VERSION="1.0.0"
