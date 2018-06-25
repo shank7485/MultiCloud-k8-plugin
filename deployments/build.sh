@@ -59,6 +59,7 @@ function build_image {
 function remove_temp_gopath {
     unset GOPATH
     rm -rf temp_gopath
+    rm k8plugin
 }
 
 install_golang
