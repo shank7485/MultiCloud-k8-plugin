@@ -6,7 +6,7 @@ all: build run_tests
 ci: run_tests
 
 build:
-	go build -o $(GOPATH)/target/k8plugin $(CURDIR)/../cmd/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -tags netgo -ldflags '-w' -o $(GOPATH)/target/k8plugin $(CURDIR)/../cmd/main.go
 
 run_tests:
 	cd ../ && go test -v ./... -cover
