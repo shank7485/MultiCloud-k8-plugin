@@ -21,6 +21,7 @@ import (
 	appsV1 "k8s.io/api/apps/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -32,16 +33,16 @@ type Client struct {
 // APIVersion supported for the Kubernetes Reference Deployment
 const APIVersion = "apps/v1"
 
-// ClientDeploymentInterface contains a subset of supported methods. The methods
-// present in the interface are only to satisfy the DeploymentInterface present
-// in the deployment.go of client-go library. Whatever method implemented with the
-// Client struct in this file does not implement the following interface.
+// ClientDeploymentInterface having v1.DeploymentInterface inside, tells
+// the compiler explicitly that it satisfied the DeploymentInterface without
+// having to implement each function below manually.
+// Create(*appsV1.Deployment) (*appsV1.Deployment, error)
+// List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error)
+// Delete(name string, options *metaV1.DeleteOptions) error
+// Update(*appsV1.Deployment) (*appsV1.Deployment, error)
+// Get(name string, options metaV1.GetOptions) (*appsV1.Deployment, error)
 type ClientDeploymentInterface interface {
-	Create(*appsV1.Deployment) (*appsV1.Deployment, error)
-	List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error)
-	Delete(name string, options *metaV1.DeleteOptions) error
-	Update(*appsV1.Deployment) (*appsV1.Deployment, error)
-	Get(name string, options metaV1.GetOptions) (*appsV1.Deployment, error)
+	v1.DeploymentInterface
 }
 
 // NewClient loads Kubernetes local configuration values into a client

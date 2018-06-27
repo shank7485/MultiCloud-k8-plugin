@@ -19,9 +19,12 @@ import (
 
 	appsV1 "k8s.io/api/apps/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/typed/apps/v1"
 )
 
 type mockClient struct {
+	v1.DeploymentInterface
+
 	create func() (*appsV1.Deployment, error)
 	list   func() (*appsV1.DeploymentList, error)
 	delete func() error
