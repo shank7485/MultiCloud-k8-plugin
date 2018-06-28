@@ -32,35 +32,35 @@ type mockClient struct {
 	get    func() (string, error)
 }
 
-func (c *mockClient) Create(deployment *appsV1.Deployment) (string, error) {
+func (c *mockClient) CreateDeployment(deployment *appsV1.Deployment) (string, error) {
 	if c.create != nil {
 		return c.create()
 	}
 	return "", nil
 }
 
-func (c *mockClient) List(limit int64) (*[]string, error) {
+func (c *mockClient) ListDeployment(limit int64) (*[]string, error) {
 	if c.list != nil {
 		return c.list()
 	}
 	return nil, nil
 }
 
-func (c *mockClient) Delete(name string) error {
+func (c *mockClient) DeleteDeployment(name string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) Update(deployment *appsV1.Deployment) error {
+func (c *mockClient) UpdateDeployment(deployment *appsV1.Deployment) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) Get(name string) (string, error) {
+func (c *mockClient) GetDeployment(name string) (string, error) {
 	if c.get != nil {
 		return c.get()
 	}

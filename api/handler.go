@@ -22,6 +22,7 @@ import (
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
 	appsV1 "k8s.io/api/apps/v1"
+	// coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
@@ -35,12 +36,15 @@ type VNFInstanceService struct {
 }
 
 // VNFInstanceClientInterface has methods to work with VNF Instance resources.
+// This interface's signatures matches the methods in the Client struct in krd
+// package. This is done so that we can use the Client inside the VNFInstanceService
+// above.
 type VNFInstanceClientInterface interface {
-	Create(deployment *appsV1.Deployment) (string, error)
-	List(limit int64) (*[]string, error)
-	Update(deployment *appsV1.Deployment) error
-	Delete(name string) error
-	Get(name string) (string, error)
+	CreateDeployment(deployment *appsV1.Deployment) (string, error)
+	ListDeployment(limit int64) (*[]string, error)
+	UpdateDeployment(deployment *appsV1.Deployment) error
+	DeleteDeployment(name string) error
+	GetDeployment(name string) (string, error)
 }
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
@@ -108,20 +112,19 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	// Persist in AAI database.
 	log.Println(uuidName)
 
-	deployment, err := utils.GetDeploymentInfo(resource.CsarURL)
-	// Kubernetes Identifies resources by names. The UID setting doesn't seem to the primary ID.
-	// deployment.UID = types.UID(resource.CsarID) + types.UID("_") + uuid
-	deployment.Name = uuidName
-
+	csarData, err := utils.DownloadCSAR(resource.CsarURL)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get Deployment information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
+	// Kubernetes Identifies resources by names. The UID setting doesn't seem to the primary ID.
+	// deployment.UID = types.UID(resource.CsarID) + types.UID("_") + uuid
+	csarData.Deployment.Name = uuidName
 
-	name, err := s.Client.Create(deployment)
+	name, err := s.Client.CreateDeployment(csarData.Deployment)
 	if err != nil {
-		werr := pkgerrors.Wrap(err, "Create VNF error")
+		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -145,7 +148,7 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 func (s *VNFInstanceService) ListHandler(w http.ResponseWriter, r *http.Request) {
 	limit := int64(10) // TODO (electrocucaracha): export this as configuration value
 
-	deployments, err := s.Client.List(limit)
+	deployments, err := s.Client.ListDeployment(limit)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF list error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -175,7 +178,7 @@ func (s *VNFInstanceService) ListHandler(w http.ResponseWriter, r *http.Request)
 func (s *VNFInstanceService) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	err := s.Client.Delete(vars["vnfInstanceId"])
+	err := s.Client.DeleteDeployment(vars["vnfInstanceId"])
 	if err != nil {
 		// TODO (electrocucaracha): Determines the existence of the resource
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
@@ -204,8 +207,8 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	deployment, err := utils.GetDeploymentInfo(resource.CsarURL)
-	deployment.SetUID(types.UID(id))
+	csarData, err := utils.DownloadCSAR(resource.CsarURL)
+	csarData.Deployment.SetUID(types.UID(id))
 
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get Deployment information error")
@@ -213,7 +216,7 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = s.Client.Update(deployment)
+	err = s.Client.UpdateDeployment(csarData.Deployment)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Update VNF error")
 
@@ -239,7 +242,7 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 func (s *VNFInstanceService) GetHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	name, err := s.Client.Get(vars["vnfInstanceId"])
+	name, err := s.Client.GetDeployment(vars["vnfInstanceId"])
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)

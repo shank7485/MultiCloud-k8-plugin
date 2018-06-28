@@ -19,37 +19,96 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 	appsV1 "k8s.io/api/apps/v1"
+	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
-// Download the raw body of specific URL
+// Download the raw CSAR file from a specific URL
 var Download = func(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Get Body error")
+		return nil, pkgerrors.Wrap(err, "Get CSAR file error")
 	}
 	defer resp.Body.Close()
 
 	rawBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Read Body error")
+		return nil, pkgerrors.Wrap(err, "Read CSAR file error")
 	}
 
 	return rawBody, nil
 }
 
-// GetDeploymentInfo retrieves the YAML file from an external source
-func GetDeploymentInfo(url string) (*appsV1.Deployment, error) {
-	rawYAMLbytes, err := Download(url)
+// DownloadCSAR to download the CSAR files form URL and parse it
+// to get deployment and service yamls
+var DownloadCSAR = func(url string) (*CSARData, error) {
+	rawFile, err := Download(url)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Get YAML file error")
+		return nil, err
 	}
 
+	// This will be changed to whatever is actually present in a CSAR
+	csar := &CSARData{
+		CSARdata: rawFile,
+	}
+
+	err = csar.ParseDeploymentInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	err = csar.ParseServiceInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	return csar, nil
+}
+
+// CSARParser is an interface to parse both Deployment and Services
+// yaml files
+type CSARParser interface {
+	ParseDeploymentInfo() error
+	ParseServiceInfo() error
+}
+
+// CSARData to store CSAR information including both services and
+// deployments
+type CSARData struct {
+	CSARdata   []byte // Change this to whatever type read CSAR files have
+	Deployment *appsV1.Deployment
+	Service    *coreV1.Service
+}
+
+// ParseDeploymentInfo retrieves the deployment YAML file from a CSAR
+func (c *CSARData) ParseDeploymentInfo() error {
 	decode := scheme.Codecs.UniversalDeserializer().Decode
-	obj, _, err := decode(rawYAMLbytes, nil, nil)
+	obj, _, err := decode(c.CSARdata, nil, nil)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Deserialize deployment error")
+		return pkgerrors.Wrap(err, "Deserialize deployment error")
 	}
 
-	return obj.(*appsV1.Deployment), nil
+	switch o := obj.(type) {
+	case *appsV1.Deployment:
+		c.Deployment = o
+		return nil
+	default:
+		return pkgerrors.Wrap(err, "Unknown type in Yaml")
+	}
+}
+
+// ParseServiceInfo retrieves the service YAML file from a CSAR
+func (c *CSARData) ParseServiceInfo() error {
+	decode := scheme.Codecs.UniversalDeserializer().Decode
+	obj, _, err := decode(c.CSARdata, nil, nil)
+	if err != nil {
+		return pkgerrors.Wrap(err, "Deserialize service error")
+	}
+	switch o := obj.(type) {
+	case *coreV1.Service:
+		c.Service = o
+		return nil
+	default:
+		return pkgerrors.Wrap(err, "Unknown type in Yaml")
+	}
 }

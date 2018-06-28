@@ -63,15 +63,64 @@ spec:
 		}
 		expected.APIVersion = "apps/v1"
 		expected.Kind = "Deployment"
-		result, err := GetDeploymentInfo("http://fakescarserver.com")
+		result, err := DownloadCSAR("http://fakescarserver.com")
 		if err != nil {
 			t.Fatalf("TestDownloadDeploymentInfo returned an error (%s)", err)
 		}
 		if result == nil {
 			t.Fatal("TestDownloadDeploymentInfo didn't return a result")
 		}
-		if !reflect.DeepEqual(expected, result) {
+		if !reflect.DeepEqual(expected, result.Deployment) {
 			t.Fatalf("TestDownloadDeploymentInfo returned:\n result=%v\n expected=%v", result, expected)
+		}
+	})
+}
+
+func TestDownloadServiceInfo(t *testing.T) {
+	t.Run("Succesful parse service information", func(t *testing.T) {
+		Download = func(url string) ([]byte, error) {
+			body := `
+apiVersion: v1
+kind: Service
+metadata:
+  name: sise-svc
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+  selector:
+    app: sise
+---
+`
+			return []byte(body), nil
+		}
+		expectedService := &coreV1.Service{
+			ObjectMeta: metaV1.ObjectMeta{
+				Name: "sise-svc",
+			},
+			Spec: coreV1.ServiceSpec{
+				Ports: []coreV1.ServicePort{
+					{
+						Port:     80,
+						Protocol: "TCP",
+					},
+				},
+				Selector: map[string]string{"app": "sise"},
+			},
+		}
+		expectedService.APIVersion = "v1"
+		expectedService.Kind = "Service"
+
+		result, err := DownloadCSAR("http://fakescarserver.com")
+
+		if err != nil {
+			t.Fatalf("TestDownloadServiceInfo returned an error (%s)", err)
+		}
+		if result == nil {
+			t.Fatal("TestDownloadServiceInfo didn't return a result")
+		}
+		if !reflect.DeepEqual(expectedService, result.Service) {
+			t.Fatalf("TestDownloadServiceInfo returned:\n result=%v\n expected=%v", result.Service, expectedService)
 		}
 	})
 }

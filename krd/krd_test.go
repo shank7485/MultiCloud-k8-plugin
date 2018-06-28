@@ -22,7 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes/typed/apps/v1"
 )
 
-type mockClient struct {
+type mockDeploymentClient struct {
 	v1.DeploymentInterface
 
 	create func() (*appsV1.Deployment, error)
@@ -32,35 +32,36 @@ type mockClient struct {
 	get    func() (*appsV1.Deployment, error)
 }
 
-func (c *mockClient) Create(deployment *appsV1.Deployment) (*appsV1.Deployment, error) {
+// There mocks are to implement the actual v1.DeploymentInterface
+func (c *mockDeploymentClient) Create(deployment *appsV1.Deployment) (*appsV1.Deployment, error) {
 	if c.create != nil {
 		return c.create()
 	}
 	return nil, nil
 }
 
-func (c *mockClient) List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error) {
+func (c *mockDeploymentClient) List(opts metaV1.ListOptions) (*appsV1.DeploymentList, error) {
 	if c.list != nil {
 		return c.list()
 	}
 	return nil, nil
 }
 
-func (c *mockClient) Delete(name string, options *metaV1.DeleteOptions) error {
+func (c *mockDeploymentClient) Delete(name string, options *metaV1.DeleteOptions) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) Update(deployment *appsV1.Deployment) (*appsV1.Deployment, error) {
+func (c *mockDeploymentClient) Update(deployment *appsV1.Deployment) (*appsV1.Deployment, error) {
 	if c.update != nil {
 		return c.update()
 	}
 	return nil, nil
 }
 
-func (c *mockClient) Get(name string, options metaV1.GetOptions) (*appsV1.Deployment, error) {
+func (c *mockDeploymentClient) Get(name string, options metaV1.GetOptions) (*appsV1.Deployment, error) {
 	if c.get != nil {
 		return c.get()
 	}
@@ -76,14 +77,14 @@ func TestClientCreateMethod(t *testing.T) {
 			},
 		}
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
-			return &mockClient{
+			return &mockDeploymentClient{
 				create: func() (*appsV1.Deployment, error) {
 					return input, nil
 				},
 			}, nil
 		}
 		client, _ := NewClient("")
-		result, err := client.Create(input)
+		result, err := client.CreateDeployment(input)
 		if err != nil {
 			t.Fatalf("TestDeploymentCreation returned an error (%s)", err)
 		}
@@ -111,14 +112,14 @@ func TestClientListMethod(t *testing.T) {
 			},
 		}
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
-			return &mockClient{
+			return &mockDeploymentClient{
 				list: func() (*appsV1.DeploymentList, error) {
 					return input, nil
 				},
 			}, nil
 		}
 		client, _ := NewClient("")
-		result, err := client.List(10)
+		result, err := client.ListDeployment(10)
 		if err != nil {
 			t.Fatalf("TestClientListMethod returned an error (%s)", err)
 		}
@@ -131,14 +132,14 @@ func TestClientListMethod(t *testing.T) {
 func TestClientDeleteMethod(t *testing.T) {
 	t.Run("Succesful deployment deletion", func(t *testing.T) {
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
-			return &mockClient{
+			return &mockDeploymentClient{
 				delete: func() error {
 					return nil
 				},
 			}, nil
 		}
 		client, _ := NewClient("")
-		err := client.Delete("test")
+		err := client.DeleteDeployment("test")
 		if err != nil {
 			t.Fatalf("TestDeploymentDeletion returned an error (%s)", err)
 		}
@@ -154,7 +155,7 @@ func TestClientUpdateMethod(t *testing.T) {
 			},
 		}
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
-			return &mockClient{
+			return &mockDeploymentClient{
 				update: func() (*appsV1.Deployment, error) {
 					return input, nil
 				},
@@ -163,7 +164,7 @@ func TestClientUpdateMethod(t *testing.T) {
 		client, _ := NewClient("")
 		input.SetName("New-sise-deploy")
 
-		err := client.Update(input)
+		err := client.UpdateDeployment(input)
 		if err != nil {
 			t.Fatalf("TestDeploymentUpdate returned an error (%s)", err)
 		}
@@ -180,14 +181,14 @@ func TestClientGetMethod(t *testing.T) {
 		}
 
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
-			return &mockClient{
+			return &mockDeploymentClient{
 				get: func() (*appsV1.Deployment, error) {
 					return output, nil
 				},
 			}, nil
 		}
 		client, _ := NewClient("")
-		result, err := client.Get(expected)
+		result, err := client.GetDeployment(expected)
 		if err != nil {
 			t.Fatalf("TestClientGetMethod returned an error (%s)", err)
 		}

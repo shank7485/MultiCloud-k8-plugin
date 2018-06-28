@@ -82,8 +82,8 @@ var GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
 
 // The following methods implement the interface VNFInstanceClientInterface.
 
-// Create deployment object in a specific Kubernetes Deployment
-func (c *Client) Create(deployment *appsV1.Deployment) (string, error) {
+// CreateDeployment object in a specific Kubernetes Deployment
+func (c *Client) CreateDeployment(deployment *appsV1.Deployment) (string, error) {
 	result, err := c.deploymentClient.Create(deployment)
 	if err != nil {
 		return "", pkgerrors.Wrap(err, "Create VNF error")
@@ -92,8 +92,8 @@ func (c *Client) Create(deployment *appsV1.Deployment) (string, error) {
 	return result.GetObjectMeta().GetName(), nil
 }
 
-// List of existing deployments hosted in a specific Kubernetes Deployment
-func (c *Client) List(limit int64) (*[]string, error) {
+// ListDeployment of existing deployments hosted in a specific Kubernetes Deployment
+func (c *Client) ListDeployment(limit int64) (*[]string, error) {
 	opts := metaV1.ListOptions{
 		Limit: limit,
 	}
@@ -113,8 +113,8 @@ func (c *Client) List(limit int64) (*[]string, error) {
 	return &result, nil
 }
 
-// Delete existing deployments hosting in a specific Kubernetes Deployment
-func (c *Client) Delete(name string) error {
+// DeleteDeployment existing deployments hosting in a specific Kubernetes Deployment
+func (c *Client) DeleteDeployment(name string) error {
 	deletePolicy := metaV1.DeletePropagationForeground
 
 	err := c.deploymentClient.Delete(name, &metaV1.DeleteOptions{
@@ -126,8 +126,8 @@ func (c *Client) Delete(name string) error {
 	return nil
 }
 
-// Update existing deployments hosting in a specific Kubernetes Deployment
-func (c *Client) Update(deployment *appsV1.Deployment) error {
+// UpdateDeployment existing deployments hosting in a specific Kubernetes Deployment
+func (c *Client) UpdateDeployment(deployment *appsV1.Deployment) error {
 	_, err := c.deploymentClient.Update(deployment)
 	if err != nil {
 		return pkgerrors.Wrap(err, "Update VNF error")
@@ -135,8 +135,8 @@ func (c *Client) Update(deployment *appsV1.Deployment) error {
 	return nil
 }
 
-// Get existing deployment hosting in a specific Kubernetes Deployment
-func (c *Client) Get(name string) (string, error) {
+// GetDeployment existing deployment hosting in a specific Kubernetes Deployment
+func (c *Client) GetDeployment(name string) (string, error) {
 	opts := metaV1.GetOptions{}
 	opts.APIVersion = APIVersion
 	opts.Kind = "Deployment"
