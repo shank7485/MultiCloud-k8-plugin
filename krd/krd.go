@@ -19,15 +19,18 @@ import (
 	pkgerrors "github.com/pkg/errors"
 
 	appsV1 "k8s.io/api/apps/v1"
+	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/typed/apps/v1"
+	appsV1Interface "k8s.io/client-go/kubernetes/typed/apps/v1"
+	coreV1Interface "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 // Client is the client used to communicate with Kubernetes Reference Deployment
 type Client struct {
 	deploymentClient ClientDeploymentInterface
+	serviceClient    ClientServiceInterface
 }
 
 // APIVersion supported for the Kubernetes Reference Deployment
@@ -42,42 +45,52 @@ const APIVersion = "apps/v1"
 // Update(*appsV1.Deployment) (*appsV1.Deployment, error)
 // Get(name string, options metaV1.GetOptions) (*appsV1.Deployment, error)
 type ClientDeploymentInterface interface {
-	v1.DeploymentInterface
+	appsV1Interface.DeploymentInterface
+}
+
+// ClientServiceInterface is for Service clients
+type ClientServiceInterface interface {
+	coreV1Interface.ServiceInterface
 }
 
 // NewClient loads Kubernetes local configuration values into a client
 func NewClient(kubeconfigPath string) (*Client, error) {
 	var deploymentClient ClientDeploymentInterface
+	var serviceClient ClientServiceInterface
 
-	deploymentClient, err := GetKubeClient(kubeconfigPath)
+	deploymentClient, serviceClient, err := GetKubeClient(kubeconfigPath)
 	if err != nil {
 		return nil, err
 	}
 	client := &Client{
 		deploymentClient: deploymentClient,
+		serviceClient:    serviceClient,
 	}
 	return client, nil
 }
 
 // GetKubeClient loads the Kubernetes configuation values stored into the local configuration file
-var GetKubeClient = func(configPath string) (ClientDeploymentInterface, error) {
-	var result ClientDeploymentInterface
+var GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
+	var deploy ClientDeploymentInterface
+	var service ClientServiceInterface
 
 	if configPath == "" {
-		return nil, errors.New("config not passed and is not found in ~/.kube. ")
+		return nil, nil, errors.New("config not passed and is not found in ~/.kube. ")
 	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", configPath)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "setConfig: Build config from flags raised an error")
+		return nil, nil, pkgerrors.Wrap(err, "setConfig: Build config from flags raised an error")
 	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	result = clientset.AppsV1().Deployments("default")
-	return result, nil
+	deploy = clientset.AppsV1().Deployments("default")
+	service = clientset.CoreV1().Services("default")
+
+	return deploy, service, nil
 }
 
 // The following methods implement the interface VNFInstanceClientInterface.
@@ -146,4 +159,48 @@ func (c *Client) GetDeployment(name string) (string, error) {
 		return "", pkgerrors.Wrap(err, "Get VNF error")
 	}
 	return deployment.Name, nil
+}
+
+// CreateService object in a specific Kubernetes Deployment
+func (c *Client) CreateService(service *coreV1.Service) (string, error) {
+	result, err := c.serviceClient.Create(service)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Create VNF service error")
+	}
+
+	return result.GetObjectMeta().GetName(), nil
+}
+
+// ListService of existing deployments hosted in a specific Kubernetes Deployment
+func (c *Client) ListService(limit int64) (*[]string, error) {
+	opts := metaV1.ListOptions{
+		Limit: limit,
+	}
+	opts.APIVersion = APIVersion
+	opts.Kind = "Service"
+
+	list, err := c.serviceClient.List(opts)
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "Get VNF service list error")
+	}
+	result := make([]string, 0, limit)
+	if list != nil {
+		for _, service := range list.Items {
+			result = append(result, service.Name)
+		}
+	}
+	return &result, nil
+}
+
+// GetService existing service hosting in a specific Kubernetes Service
+func (c *Client) GetService(name string) (string, error) {
+	opts := metaV1.GetOptions{}
+	opts.APIVersion = APIVersion
+	opts.Kind = "Service"
+
+	service, err := c.serviceClient.Get(name, opts)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Get VNF service error")
+	}
+	return service.Name, nil
 }
