@@ -80,6 +80,42 @@ type mockServiceClient struct {
 	get    func() (*coreV1.Service, error)
 }
 
+// There mocks are to implement the actual corev1.ServiceInterface
+func (c *mockServiceClient) Create(service *coreV1.Service) (*coreV1.Service, error) {
+	if c.create != nil {
+		return c.create()
+	}
+	return nil, nil
+}
+
+func (c *mockServiceClient) List(opts metaV1.ListOptions) (*coreV1.ServiceList, error) {
+	if c.list != nil {
+		return c.list()
+	}
+	return nil, nil
+}
+
+func (c *mockServiceClient) Delete(name string, options *metaV1.DeleteOptions) error {
+	if c.delete != nil {
+		return c.delete()
+	}
+	return nil
+}
+
+func (c *mockServiceClient) Update(service *coreV1.Service) (*coreV1.Service, error) {
+	if c.update != nil {
+		return c.update()
+	}
+	return nil, nil
+}
+
+func (c *mockServiceClient) Get(name string, options metaV1.GetOptions) (*coreV1.Service, error) {
+	if c.get != nil {
+		return c.get()
+	}
+	return nil, nil
+}
+
 func TestClientCreateMethod(t *testing.T) {
 	t.Run("Succesful deployment and service creation", func(t *testing.T) {
 		expectedDeploy := "sise-deploy"
