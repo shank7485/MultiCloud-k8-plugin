@@ -148,18 +148,18 @@ func TestClientCreateMethod(t *testing.T) {
 		client, _ := NewClient("")
 		resultDeploy, err := client.CreateDeployment(inputDeploy)
 		if err != nil {
-			t.Fatalf("TestDeploymentCreation returned an error (%s)", err)
+			t.Fatalf("TestClientCreateMethod Deployment returned an error (%s)", err)
 		}
 		if resultDeploy != expectedDeploy {
-			t.Fatalf("TestDeploymentCreation returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
+			t.Fatalf("TestClientCreateMethod Deployment returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
 		}
 
 		resultService, err := client.CreateService(inputService)
 		if err != nil {
-			t.Fatalf("TestServiceCreation returned an error (%s)", err)
+			t.Fatalf("TestClientCreateMethod Service returned an error (%s)", err)
 		}
 		if resultService != expectedService {
-			t.Fatalf("TestServiceCreation returned:\n result=%v\n expected=%v", resultService, expectedService)
+			t.Fatalf("TestClientCreateMethod Service returned:\n result=%v\n expected=%v", resultService, expectedService)
 		}
 	})
 }
@@ -213,18 +213,18 @@ func TestClientListMethod(t *testing.T) {
 		client, _ := NewClient("")
 		resultDeploy, err := client.ListDeployment(10)
 		if err != nil {
-			t.Fatalf("TestClientListMethod returned an error (%s)", err)
+			t.Fatalf("TestClientListMethod Deployment returned an error (%s)", err)
 		}
 		if !reflect.DeepEqual(expectedDeploy, resultDeploy) {
-			t.Fatalf("TestClientListMethod returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
+			t.Fatalf("TestClientListMethod Deployment returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
 		}
 
 		resultService, err := client.ListService(10)
 		if err != nil {
-			t.Fatalf("TestClientListMethod returned an error (%s)", err)
+			t.Fatalf("TestClientListMethod Service returned an error (%s)", err)
 		}
 		if !reflect.DeepEqual(expectedService, resultService) {
-			t.Fatalf("TestClientListMethod returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
+			t.Fatalf("TestClientListMethod Service returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
 		}
 
 	})
@@ -248,13 +248,18 @@ func TestClientDeleteMethod(t *testing.T) {
 		client, _ := NewClient("")
 		err := client.DeleteDeployment("test")
 		if err != nil {
-			t.Fatalf("TestDeploymentDeletion returned an error (%s)", err)
+			t.Fatalf("TestClientDeleteMethod Deployment returned an error (%s)", err)
+		}
+
+		err = client.DeleteService("test")
+		if err != nil {
+			t.Fatalf("TestClientDeleteMethod Service returned an error (%s)", err)
 		}
 	})
 }
 
 func TestClientUpdateMethod(t *testing.T) {
-	t.Run("Succesful deployment update", func(t *testing.T) {
+	t.Run("Succesful deployment and service update", func(t *testing.T) {
 		expectedOldDeploy := "sise-deploy"
 		expectedOldService := "sise-svc"
 		inputDeploy := &appsV1.Deployment{
@@ -288,13 +293,18 @@ func TestClientUpdateMethod(t *testing.T) {
 
 		err := client.UpdateDeployment(inputDeploy)
 		if err != nil {
-			t.Fatalf("TestDeploymentUpdate returned an error (%s)", err)
+			t.Fatalf("TestClientUpdateMethod Deployment returned an error (%s)", err)
+		}
+
+		err = client.UpdateService(inputService)
+		if err != nil {
+			t.Fatalf("TestClientUpdateMethod Service returned an error (%s)", err)
 		}
 	})
 }
 
 func TestClientGetMethod(t *testing.T) {
-	t.Run("Succesful get deployment", func(t *testing.T) {
+	t.Run("Succesful get deployment and service", func(t *testing.T) {
 		expected := "test"
 		outputDeploy := &appsV1.Deployment{
 			ObjectMeta: metaV1.ObjectMeta{
@@ -323,17 +333,18 @@ func TestClientGetMethod(t *testing.T) {
 		client, _ := NewClient("")
 		result, err := client.GetDeployment(expected)
 		if err != nil {
-			t.Fatalf("TestClientGetMethod returned an error (%s)", err)
+			t.Fatalf("TestClientGetMethod Deployment returned an error (%s)", err)
 		}
 		if !reflect.DeepEqual(expected, result) {
-			t.Fatalf("TestClientGetMethod returned:\n result=%v\n expected=%v", result, expected)
+			t.Fatalf("TestClientGetMethod Deployment returned:\n result=%v\n expected=%v", result, expected)
 		}
+
 		result, err = client.GetService(expected)
 		if err != nil {
-			t.Fatalf("TestClientGetMethod returned an error (%s)", err)
+			t.Fatalf("TestClientGetMethod Service returned an error (%s)", err)
 		}
 		if !reflect.DeepEqual(expected, result) {
-			t.Fatalf("TestClientGetMethod returned:\n result=%v\n expected=%v", result, expected)
+			t.Fatalf("TestClientGetMethod Service returned:\n result=%v\n expected=%v", result, expected)
 		}
 
 	})

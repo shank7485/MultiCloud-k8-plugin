@@ -192,6 +192,28 @@ func (c *Client) ListService(limit int64) (*[]string, error) {
 	return &result, nil
 }
 
+// UpdateService updates an existing Kubernetes service
+func (c *Client) UpdateService(service *coreV1.Service) error {
+	_, err := c.serviceClient.Update(service)
+	if err != nil {
+		return pkgerrors.Wrap(err, "Update VNF service error")
+	}
+	return nil
+}
+
+// DeleteService deletes an existing Kubernetes service
+func (c *Client) DeleteService(name string) error {
+	deletePolicy := metaV1.DeletePropagationForeground
+
+	err := c.serviceClient.Delete(name, &metaV1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
+	})
+	if err != nil {
+		return pkgerrors.Wrap(err, "Delete VNF service error")
+	}
+	return nil
+}
+
 // GetService existing service hosting in a specific Kubernetes Service
 func (c *Client) GetService(name string) (string, error) {
 	opts := metaV1.GetOptions{}
