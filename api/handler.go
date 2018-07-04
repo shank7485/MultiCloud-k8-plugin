@@ -112,7 +112,8 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	// Persist in AAI database.
 	log.Println(uuidName)
 
-	csarData, err := utils.DownloadCSAR(resource.CsarURL)
+	utils.CSAR = &utils.CSARFile{} // This is ugly. Move things to create better mocks.
+	kubeData, err := utils.CreateKubeObjectsFromCSAR(resource.CsarID, resource.CsarURL)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get Deployment information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -120,9 +121,14 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Kubernetes Identifies resources by names. The UID setting doesn't seem to the primary ID.
 	// deployment.UID = types.UID(resource.CsarID) + types.UID("_") + uuid
-	csarData.Deployment.Name = uuidName
+	if kubeData.Deployment == nil {
+		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+	kubeData.Deployment.Name = uuidName
 
-	name, err := s.Client.CreateDeployment(csarData.Deployment)
+	name, err := s.Client.CreateDeployment(kubeData.Deployment)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -207,8 +213,15 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	csarData, err := utils.DownloadCSAR(resource.CsarURL)
-	csarData.Deployment.SetUID(types.UID(id))
+	utils.CSAR = &utils.CSARFile{}
+	kubeData, err := utils.CreateKubeObjectsFromCSAR(resource.CsarID, resource.CsarURL)
+	
+	if kubeData.Deployment == nil {
+		werr := pkgerrors.Wrap(err, "Update VNF deployment error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+	kubeData.Deployment.SetUID(types.UID(id))
 
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get Deployment information error")
@@ -216,7 +229,7 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = s.Client.UpdateDeployment(csarData.Deployment)
+	err = s.Client.UpdateDeployment(kubeData.Deployment)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Update VNF error")
 
