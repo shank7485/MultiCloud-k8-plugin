@@ -21,7 +21,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/shank7485/k8-plugin-multicloud/utils"
 	appsV1 "k8s.io/api/apps/v1"
+	coreV1 "k8s.io/api/core/v1"
 )
 
 type mockClient struct {
@@ -108,6 +110,14 @@ func TestVNFInstanceCreation(t *testing.T) {
 				},
 			}, nil
 		}
+		utils.DownloadCSAR = func(url string) (*utils.CSARData, error) {
+			csardata := &utils.CSARData{
+				Deployment: &appsV1.Deployment{},
+				Service:    &coreV1.Service{},
+			}
+			return csardata, nil
+		}
+
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusCreated, response.Code)
 
