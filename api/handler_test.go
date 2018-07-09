@@ -21,7 +21,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/shank7485/k8-plugin-multicloud/utils"
 	appsV1 "k8s.io/api/apps/v1"
+	coreV1 "k8s.io/api/core/v1"
 )
 
 type mockClient struct {
@@ -85,7 +87,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 	t.Run("Succesful create a VNF", func(t *testing.T) {
 		payload := []byte(`{
 			"csar_id": "1",
-			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
+			"csar_url": "url",
 			"oof_parameters": {
 				"key_values": {
 					"key1": "value1",
@@ -101,6 +103,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 		var result CreateVnfResponse
 
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
+
 		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
 			return &mockClient{
 				create: func() (string, error) {
@@ -108,6 +111,14 @@ func TestVNFInstanceCreation(t *testing.T) {
 				},
 			}, nil
 		}
+		utils.CreateKubeObjectsFromCSAR = func(csarID string, csarURL string) (*utils.KubernetesData, error) {
+			kubeData := &utils.KubernetesData{
+				Deployment: &appsV1.Deployment{},
+				Service:    &coreV1.Service{},
+			}
+			return kubeData, nil
+		}
+
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusCreated, response.Code)
 
