@@ -215,7 +215,7 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 
 	utils.CSAR = &utils.CSARFile{}
 	kubeData, err := utils.CreateKubeObjectsFromCSAR(resource.CsarID, resource.CsarURL)
-	
+
 	if kubeData.Deployment == nil {
 		werr := pkgerrors.Wrap(err, "Update VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
