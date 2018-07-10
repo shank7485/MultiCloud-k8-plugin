@@ -121,7 +121,7 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	log.Println("Service: " + uuidServiceName)
 
 	utils.CSAR = &utils.CSARFile{} // This is ugly. Move things to create better mocks.
-	kubeData, err := utils.CreateKubeObjectsFromCSAR(resource.CsarID, resource.CsarURL)
+	kubeData, err := utils.GetCSARFromURL(resource.CsarID, resource.CsarURL)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get Kubernetes Data information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -236,7 +236,7 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	utils.CSAR = &utils.CSARFile{}
-	kubeData, err := utils.CreateKubeObjectsFromCSAR(resource.CsarID, resource.CsarURL)
+	kubeData, err := utils.GetCSARFromURL(resource.CsarID, resource.CsarURL)
 
 	if kubeData.Deployment == nil {
 		werr := pkgerrors.Wrap(err, "Update VNF deployment error")

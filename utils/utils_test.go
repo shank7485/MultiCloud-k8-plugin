@@ -16,6 +16,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/shank7485/k8-plugin-multicloud/krd"
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,7 +61,7 @@ func TestReadDeploymentYAML(t *testing.T) {
 		expected.APIVersion = "apps/v1"
 		expected.Kind = "Deployment"
 
-		kubeData := &KubernetesData{}
+		kubeData := &krd.KubernetesData{}
 		err := kubeData.ReadDeploymentYAML("mock_yamls/deployment.yaml")
 
 		if err != nil {
@@ -92,7 +93,7 @@ func TestReadServiceYAML(t *testing.T) {
 		expected.APIVersion = "v1"
 		expected.Kind = "Service"
 
-		kubeData := &KubernetesData{}
+		kubeData := &krd.KubernetesData{}
 		err := kubeData.ReadServiceYAML("mock_yamls/service.yaml")
 
 		if err != nil {
@@ -105,7 +106,7 @@ func TestReadServiceYAML(t *testing.T) {
 	})
 }
 
-func TestCreateKubeObjectsFromCSAR(t *testing.T) {
+func TestGetCSARFromURL(t *testing.T) {
 	t.Run("Successfully create Deployment and Service objects", func(t *testing.T) {
 		oldcsarfile := CSAR
 		CSAR = &mockCSARFile{}
@@ -151,17 +152,17 @@ func TestCreateKubeObjectsFromCSAR(t *testing.T) {
 		expectedService.APIVersion = "v1"
 		expectedService.Kind = "Service"
 
-		kubeData, err := CreateKubeObjectsFromCSAR("mock_yamls", "www.example.com")
+		kubeData, err := GetCSARFromURL("mock_yamls", "www.example.com")
 		if err != nil {
-			t.Fatalf("TestCreateKubeObjectsFromCSAR returned an error (%s)", err)
+			t.Fatalf("TestGetCSARFromURL returned an error (%s)", err)
 		}
 
 		if !reflect.DeepEqual(expectedService, kubeData.Service) {
-			t.Fatalf("TestCreateKubeObjectsFromCSAR returned:\n result=%v\n expected=%v", kubeData.Service, expectedService)
+			t.Fatalf("TestGetCSARFromURL returned:\n result=%v\n expected=%v", kubeData.Service, expectedService)
 		}
 
 		if !reflect.DeepEqual(expectedDeployment, kubeData.Deployment) {
-			t.Fatalf("TestCreateKubeObjectsFromCSAR returned:\n result=%v\n expected=%v", kubeData.Deployment, expectedDeployment)
+			t.Fatalf("TestGetCSARFromURL returned:\n result=%v\n expected=%v", kubeData.Deployment, expectedDeployment)
 		}
 	})
 }

@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/shank7485/k8-plugin-multicloud/krd"
 	"github.com/shank7485/k8-plugin-multicloud/utils"
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
@@ -146,8 +147,8 @@ func TestVNFInstanceCreation(t *testing.T) {
 				},
 			}, nil
 		}
-		utils.CreateKubeObjectsFromCSAR = func(csarID string, csarURL string) (*utils.KubernetesData, error) {
-			kubeData := &utils.KubernetesData{
+		utils.GetCSARFromURL = func(csarID string, csarURL string) (*krd.KubernetesData, error) {
+			kubeData := &krd.KubernetesData{
 				Deployment: &appsV1.Deployment{},
 				Service:    &coreV1.Service{},
 			}

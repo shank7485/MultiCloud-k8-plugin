@@ -15,21 +15,17 @@ package utils
 
 import (
 	"archive/zip"
-	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	pkgerrors "github.com/pkg/errors"
-	appsV1 "k8s.io/api/apps/v1"
-	coreV1 "k8s.io/api/core/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
+
+	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
+// CSAR interface var used in handler
 var CSAR FileOperator
 
 // FileOperator is an interface to Download, Extract and Delete files
@@ -43,13 +39,13 @@ type FileOperator interface {
 type CSARFile struct{}
 
 // Download a CSAR file
-func (c *CSARFile) Download(fileName string, url string) error {
-	file, err := os.Create(fileName)
+func (c *CSARFile) Download(destFileName string, url string) error {
+	file, err := os.Create(destFileName)
 	if err != nil {
 		return pkgerrors.Wrap(err, "CSAR file create error")
 	}
-	defer file.Close()
 
+	defer file.Close()
 	resp, err := http.Get(url)
 	if err != nil {
 		return pkgerrors.Wrap(err, "CSAR file download error")
@@ -112,9 +108,9 @@ func (c *CSARFile) Delete(path string) error {
 	return nil
 }
 
-// CreateKubeObjectsFromCSAR to download the CSAR files from URL and extract it
+// GetCSARFromURL to download the CSAR files from URL and extract it
 // to get deployment and service yamls
-var CreateKubeObjectsFromCSAR = func(csarID string, csarURL string) (*KubernetesData, error) {
+var GetCSARFromURL = func(csarID string, csarURL string) (*krd.KubernetesData, error) {
 
 	// 1. Download CSAR file
 	err := CSAR.Download("csar_file.zip", csarURL)
@@ -129,7 +125,7 @@ var CreateKubeObjectsFromCSAR = func(csarID string, csarURL string) (*Kubernetes
 		return nil, err
 	}
 
-	kubeData := &KubernetesData{}
+	kubeData := &krd.KubernetesData{}
 
 	// 3. Read the deployment.yaml and service.yaml and set the deployment and
 	// service structs.
@@ -156,142 +152,4 @@ var CreateKubeObjectsFromCSAR = func(csarID string, csarURL string) (*Kubernetes
 
 	// 6. Return kubeData struct for kubernetes client to spin things up.
 	return kubeData, nil
-}
-
-// CSARKubeParser is an interface to parse both Deployment and Services
-// yaml files
-type CSARKubeParser interface {
-	ReadDeploymentYAML(string) error
-	ReadServiceYAML(string) error
-	ParseDeploymentInfo() error
-	ParseServiceInfo() error
-}
-
-// KubernetesData to store CSAR information including both services and
-// deployments
-type KubernetesData struct {
-	DeploymentData []byte
-	ServiceData    []byte
-	Deployment     *appsV1.Deployment
-	Service        *coreV1.Service
-}
-
-// ReadDeploymentYAML reads deployment.yaml and stores in CSARData struct
-func (c *KubernetesData) ReadDeploymentYAML(yamlFilePath string) error {
-	if _, err := os.Stat(yamlFilePath); err == nil {
-		rawBytes, err := ioutil.ReadFile(yamlFilePath)
-		if err != nil {
-			return pkgerrors.Wrap(err, "Deployment YAML file read error")
-		}
-
-		c.DeploymentData = rawBytes
-
-		err = c.ParseDeploymentInfo()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ReadServiceYAML reads service.yaml and stores in CSARData struct
-func (c *KubernetesData) ReadServiceYAML(yamlFilePath string) error {
-	if _, err := os.Stat(yamlFilePath); err == nil {
-		rawBytes, err := ioutil.ReadFile(yamlFilePath)
-		if err != nil {
-			return pkgerrors.Wrap(err, "Service YAML file read error")
-		}
-
-		c.ServiceData = rawBytes
-
-		err = c.ParseServiceInfo()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ParseDeploymentInfo retrieves the deployment YAML file from a CSAR
-func (c *KubernetesData) ParseDeploymentInfo() error {
-	if c.DeploymentData != nil {
-		log.Println("Decoding deployment YAML")
-
-		decode := scheme.Codecs.UniversalDeserializer().Decode
-		obj, _, err := decode(c.DeploymentData, nil, nil)
-		if err != nil {
-			return pkgerrors.Wrap(err, "Deserialize deployment error")
-		}
-
-		switch o := obj.(type) {
-		case *appsV1.Deployment:
-			c.Deployment = o
-			return nil
-		}
-	}
-	return nil
-}
-
-// ParseServiceInfo retrieves the service YAML file from a CSAR
-func (c *KubernetesData) ParseServiceInfo() error {
-	if c.ServiceData != nil {
-		log.Println("Decoding service YAML")
-
-		decode := scheme.Codecs.UniversalDeserializer().Decode
-		obj, _, err := decode(c.ServiceData, nil, nil)
-		if err != nil {
-			return pkgerrors.Wrap(err, "Deserialize deployment error")
-		}
-
-		switch o := obj.(type) {
-		case *coreV1.Service:
-			c.Service = o
-			return nil
-		}
-	}
-	return nil
-}
-
-// AddNetworkAnnotationsToPod adds networks metadata to pods
-func AddNetworkAnnotationsToPod(c *KubernetesData, networksList []string) {
-	/*
-		Example Annotation:
-
-		apiVersion: v1
-		kind: Pod
-		metadata:
-		name: multus-multi-net-poc
-		annotations:
-			networks: '[
-				{ "name": "flannel-conf" },
-				{ "name": "sriov-conf"},
-				{ "name": "sriov-vlanid-l2enable-conf" }
-			]'
-		spec:  # specification of the pod's contents
-		containers:
-		- name: multus-multi-net-poc
-			image: "busybox"
-			command: ["top"]
-			stdin: true
-			tty: true
-	*/
-
-	deployment := c.Deployment
-	var networksString string
-	networksString = "["
-
-	for _, network := range networksList {
-		val := fmt.Sprintf("{ \"name\": \"%s\" },", network)
-		networksString += val
-	}
-
-	// Removing the final ","
-	if len(networksString) > 0 {
-		networksString = networksString[:len(networksString)-1]
-	}
-	networksString += "]"
-
-	deployment.Spec.Template.ObjectMeta = metaV1.ObjectMeta{
-		Annotations: map[string]string{"networks": networksString},
-	}
 }
