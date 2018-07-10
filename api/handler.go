@@ -22,7 +22,7 @@ import (
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
 	appsV1 "k8s.io/api/apps/v1"
-	// coreV1 "k8s.io/api/core/v1"
+	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
@@ -45,6 +45,12 @@ type VNFInstanceClientInterface interface {
 	UpdateDeployment(deployment *appsV1.Deployment) error
 	DeleteDeployment(name string) error
 	GetDeployment(name string) (string, error)
+
+	CreateService(service *coreV1.Service) (string, error)
+	ListService(limit int64) (*[]string, error)
+	UpdateService(service *coreV1.Service) error
+	DeleteService(name string) error
+	GetService(name string) (string, error)
 }
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
@@ -106,16 +112,18 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Not using "_" since only "." and "-" are allowed.
-	uuidName := resource.Name + "." + string(uuid.NewUUID())
+	// Not using "_" since only "." and "-" are allowed for deployment names.
+	uuidDeploymentName := resource.Name + "." + string(uuid.NewUUID())
+	uuidServiceName := resource.Name + "-" + string(uuid.NewUUID())
 
 	// Persist in AAI database.
-	log.Println(uuidName)
+	log.Println("Deployment: " + uuidDeploymentName)
+	log.Println("Service: " + uuidServiceName)
 
 	utils.CSAR = &utils.CSARFile{} // This is ugly. Move things to create better mocks.
 	kubeData, err := utils.CreateKubeObjectsFromCSAR(resource.CsarID, resource.CsarURL)
 	if err != nil {
-		werr := pkgerrors.Wrap(err, "Get Deployment information error")
+		werr := pkgerrors.Wrap(err, "Get Kubernetes Data information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -126,9 +134,23 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-	kubeData.Deployment.Name = uuidName
+	kubeData.Deployment.Name = uuidDeploymentName
+
+	if kubeData.Service == nil {
+		werr := pkgerrors.Wrap(err, "Create VNF service error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+	kubeData.Service.Name = uuidServiceName
 
 	name, err := s.Client.CreateDeployment(kubeData.Deployment)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	name, err = s.Client.CreateService(kubeData.Service)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)

@@ -69,6 +69,41 @@ func (c *mockClient) GetDeployment(name string) (string, error) {
 	return "", nil
 }
 
+func (c *mockClient) CreateService(service *coreV1.Service) (string, error) {
+	if c.create != nil {
+		return c.create()
+	}
+	return "", nil
+}
+
+func (c *mockClient) ListService(limit int64) (*[]string, error) {
+	if c.list != nil {
+		return c.list()
+	}
+	return nil, nil
+}
+
+func (c *mockClient) DeleteService(name string) error {
+	if c.delete != nil {
+		return c.delete()
+	}
+	return nil
+}
+
+func (c *mockClient) UpdateService(service *coreV1.Service) error {
+	if c.delete != nil {
+		return c.delete()
+	}
+	return nil
+}
+
+func (c *mockClient) GetService(name string) (string, error) {
+	if c.get != nil {
+		return c.get()
+	}
+	return "", nil
+}
+
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	router := NewRouter("")
 	recorder := httptest.NewRecorder()

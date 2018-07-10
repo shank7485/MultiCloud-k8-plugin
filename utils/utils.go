@@ -15,6 +15,7 @@ package utils
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -25,6 +26,7 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -248,4 +250,48 @@ func (c *KubernetesData) ParseServiceInfo() error {
 		}
 	}
 	return nil
+}
+
+// AddNetworkAnnotationsToPod adds networks metadata to pods
+func AddNetworkAnnotationsToPod(c *KubernetesData, networksList []string) {
+	/*
+		Example Annotation:
+
+		apiVersion: v1
+		kind: Pod
+		metadata:
+		name: multus-multi-net-poc
+		annotations:
+			networks: '[
+				{ "name": "flannel-conf" },
+				{ "name": "sriov-conf"},
+				{ "name": "sriov-vlanid-l2enable-conf" }
+			]'
+		spec:  # specification of the pod's contents
+		containers:
+		- name: multus-multi-net-poc
+			image: "busybox"
+			command: ["top"]
+			stdin: true
+			tty: true
+	*/
+
+	deployment := c.Deployment
+	var networksString string
+	networksString = "["
+
+	for _, network := range networksList {
+		val := fmt.Sprintf("{ \"name\": \"%s\" },", network)
+		networksString += val
+	}
+
+	// Removing the final ","
+	if len(networksString) > 0 {
+		networksString = networksString[:len(networksString)-1]
+	}
+	networksString += "]"
+
+	deployment.Spec.Template.ObjectMeta = metaV1.ObjectMeta{
+		Annotations: map[string]string{"networks": networksString},
+	}
 }
