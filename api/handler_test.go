@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/shank7485/k8-plugin-multicloud/krd"
 	"github.com/shank7485/k8-plugin-multicloud/utils"
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
@@ -69,6 +70,41 @@ func (c *mockClient) GetDeployment(name string) (string, error) {
 	return "", nil
 }
 
+func (c *mockClient) CreateService(service *coreV1.Service) (string, error) {
+	if c.create != nil {
+		return c.create()
+	}
+	return "", nil
+}
+
+func (c *mockClient) ListService(limit int64) (*[]string, error) {
+	if c.list != nil {
+		return c.list()
+	}
+	return nil, nil
+}
+
+func (c *mockClient) DeleteService(name string) error {
+	if c.delete != nil {
+		return c.delete()
+	}
+	return nil
+}
+
+func (c *mockClient) UpdateService(service *coreV1.Service) error {
+	if c.delete != nil {
+		return c.delete()
+	}
+	return nil
+}
+
+func (c *mockClient) GetService(name string) (string, error) {
+	if c.get != nil {
+		return c.get()
+	}
+	return "", nil
+}
+
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	router := NewRouter("")
 	recorder := httptest.NewRecorder()
@@ -87,7 +123,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 	t.Run("Succesful create a VNF", func(t *testing.T) {
 		payload := []byte(`{
 			"csar_id": "1",
-			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
+			"csar_url": "url",
 			"oof_parameters": {
 				"key_values": {
 					"key1": "value1",
@@ -103,6 +139,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 		var result CreateVnfResponse
 
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
+
 		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
 			return &mockClient{
 				create: func() (string, error) {
@@ -110,12 +147,12 @@ func TestVNFInstanceCreation(t *testing.T) {
 				},
 			}, nil
 		}
-		utils.DownloadCSAR = func(url string) (*utils.CSARData, error) {
-			csardata := &utils.CSARData{
+		utils.GetCSARFromURL = func(csarID string, csarURL string) (*krd.KubernetesData, error) {
+			kubeData := &krd.KubernetesData{
 				Deployment: &appsV1.Deployment{},
 				Service:    &coreV1.Service{},
 			}
-			return csardata, nil
+			return kubeData, nil
 		}
 
 		response := executeRequest(req)
