@@ -1,49 +1,24 @@
 #!/bin/bash
+# SPDX-license-identifier: Apache-2.0
+##############################################################################
+# Copyright (c) 2018
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Apache License, Version 2.0
+# which accompanies this distribution, and is available at
+# http://www.apache.org/licenses/LICENSE-2.0
+##############################################################################
 
 set -x
 
-BUILD_ARGS="--no-cache"
-ORG="onap"
-VERSION="1.0.0"
-PROJECT="multicloud"
-IMAGE="k8plugin"
-DOCKER_REPOSITORY="nexus3.onap.org:10003"
-IMAGE_NAME="${DOCKER_REPOSITORY}/${ORG}/${PROJECT}/${IMAGE}"
-TIMESTAMP=$(date +"%Y%m%dT%H%M%S")
+IMAGE_NAME="${DOCKER_REPOSITORY:-"nexus3.onap.org:10003"}/${ORG:-"onap"}/${PROJECT:-"multicloud"}/${IMAGE:-"k8plugin"}"
 
+BUILD_ARGS="--no-cache"
 if [ $HTTP_PROXY ]; then
     BUILD_ARGS+=" --build-arg HTTP_PROXY=${HTTP_PROXY}"
 fi
 if [ $HTTPS_PROXY ]; then
     BUILD_ARGS+=" --build-arg HTTPS_PROXY=${HTTPS_PROXY}"
 fi
-
-function install_golang {
-    local golang_version=go1.10.3.linux-amd64
-    if [ ! -d /root/go ]; then
-	curl -O https://dl.google.com/go/$golang_version.tar.gz
-        tar -zxf $golang_version.tar.gz
-        mv go /root/
-        pushd /root/go
-        echo GOROOT=$PWD >> /etc/environment
-        echo PATH=$PATH:$PWD/bin >> /etc/environment
-        popd
-        rm -rf $golang_version.tar.gz
-    fi
-    source /etc/environment
-}
-
-function create_temp_gopath {
-    mkdir temp_gopath
-    pushd temp_gopath
-    export GOPATH=$(pwd)
-    go get github.com/shank7485/k8-plugin-multicloud/...
-    popd
-}
-
-function install_dep {
-    curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-}
 
 function generate_binary {
     pushd $GOPATH/src/github.com/shank7485/k8-plugin-multicloud
@@ -58,15 +33,5 @@ function build_image {
     docker build ${BUILD_ARGS} -t ${IMAGE_NAME}:latest .
 }
 
-function remove_temp_gopath {
-    unset GOPATH
-    rm -rf temp_gopath
-    rm k8plugin
-}
-
-install_golang
-create_temp_gopath
-install_dep
 generate_binary
 build_image
-remove_temp_gopath
