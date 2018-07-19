@@ -14,11 +14,20 @@ limitations under the License.
 package api
 
 import (
-	"log"
-
+	"errors"
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
+	"log"
+	"os"
 )
+
+// CheckInitialSettings is used to check initial settings required to start api
+func CheckInitialSettings() error {
+	if os.Getenv("CSAR_DIR") == "" {
+		return errors.New("environment variable CSAR_DIR not set")
+	}
+	return nil
+}
 
 // NewRouter creates a router instance that serves the VNFInstance web methods
 func NewRouter(kubeconfig string) (s *mux.Router) {

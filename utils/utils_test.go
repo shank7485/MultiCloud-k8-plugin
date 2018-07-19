@@ -13,6 +13,7 @@ limitations under the License.
 package utils
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
@@ -147,6 +148,8 @@ func TestReadCSARFromFileSystem(t *testing.T) {
 		}
 		expectedService.APIVersion = "v1"
 		expectedService.Kind = "Service"
+
+		os.Setenv("CSAR_DIR", ".")
 
 		kubeData, err := ReadCSARFromFileSystem("mock_yamls")
 		if err != nil {

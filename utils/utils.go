@@ -15,7 +15,9 @@ package utils
 
 import (
 	"archive/zip"
+	"errors"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -157,12 +159,30 @@ func (c *CSARFile) Delete(path string) error {
 // ReadCSARFromFileSystem reads the CSAR files from the files system
 var ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
 	kubeData := &krd.KubernetesData{}
+	var path string
 
-	err := kubeData.ReadDeploymentYAML(csarID + "/deployment.yaml")
+	path = os.Getenv("CSAR_DIR") + "/" + csarID + "/deployment.yaml" // Remove utils path
+
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil, errors.New("File " + path + "does not exists")
+	}
+
+	log.Println("deployment file: " + path)
+	err = kubeData.ReadDeploymentYAML(path)
 	if err != nil {
 		return nil, err
 	}
-	err = kubeData.ReadServiceYAML(csarID + "/service.yaml")
+
+	path = os.Getenv("CSAR_DIR") + "/" + csarID + "/service.yaml" // Remove utils path
+
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil, errors.New("File " + path + " does not exists")
+	}
+
+	log.Println("service file: " + path)
+	err = kubeData.ReadServiceYAML(path)
 	if err != nil {
 		return nil, err
 	}

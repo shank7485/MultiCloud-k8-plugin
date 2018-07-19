@@ -80,12 +80,12 @@ func validateBody(body interface{}) error {
 	switch b := body.(type) {
 	case CreateVnfRequest:
 		if b.CloudRegionID == "" || b.CsarID == "" {
-			werr := pkgerrors.Wrap(errors.New("Invalid Data in POST request"), "CreateVnfRequest bad request")
+			werr := pkgerrors.Wrap(errors.New("Invalid/Missing Data in POST request"), "CreateVnfRequest bad request")
 			return werr
 		}
 	case UpdateVnfRequest:
 		if b.CloudRegionID == "" || b.CsarID == "" {
-			werr := pkgerrors.Wrap(errors.New("Invalid Data in PUT request"), "UpdateVnfRequest bad request")
+			werr := pkgerrors.Wrap(errors.New("Invalid/Missing Data in PUT request"), "UpdateVnfRequest bad request")
 			return werr
 		}
 	}
@@ -114,14 +114,12 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Not using "_" since only "." and "-" are allowed for deployment names.
-	uuidDeploymentName := resource.Name + "." + string(uuid.NewUUID())
-	uuidServiceName := resource.Name + "-" + string(uuid.NewUUID())
+	uuidDeploymentName := resource.CsarID + "-" + string(uuid.NewUUID())
+	uuidServiceName := resource.CsarID + "-" + string(uuid.NewUUID())
 
 	// Persist in AAI database.
 	log.Println("Deployment: " + uuidDeploymentName)
 	log.Println("Service: " + uuidServiceName)
-
-	// utils.CSAR = &utils.CSARFile{} // This is ugly. Move things to create better mocks.
 
 	kubeData, err := utils.ReadCSARFromFileSystem(resource.CsarID)
 	if err != nil {
@@ -129,41 +127,35 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-	// kubeData, err := utils.GetCSARFromURL(resource.CsarID, resource.CsarURL)
-	// if err != nil {
-	// 	werr := pkgerrors.Wrap(err, "Get Kubernetes Data information error")
-	// 	http.Error(w, werr.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
 
 	// Kubernetes Identifies resources by names. The UID setting doesn't seem to the primary ID.
 	// deployment.UID = types.UID(resource.CsarID) + types.UID("_") + uuid
 	if kubeData.Deployment == nil {
-		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
+		werr := pkgerrors.Wrap(err, "Read kubeData.Deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
+	kubeData.Deployment.Namespace = "default"
 	kubeData.Deployment.Name = uuidDeploymentName
 
-	// kubeData.Deployment.Namespace = ""
-
 	if kubeData.Service == nil {
-		werr := pkgerrors.Wrap(err, "Create VNF service error")
+		werr := pkgerrors.Wrap(err, "Read kubeData.Service error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
+	kubeData.Service.Namespace = "default"
 	kubeData.Service.Name = uuidServiceName
 
 	// krd.AddNetworkAnnotationsToPod(kubeData, resource.Networks)
 
-	name, err := s.Client.CreateDeployment(kubeData.Deployment)
+	_, err = s.Client.CreateDeployment(kubeData.Deployment)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	name, err = s.Client.CreateService(kubeData.Service)
+	_, err = s.Client.CreateService(kubeData.Service)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF service error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -171,7 +163,7 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	resp := CreateVnfResponse{
-		DeploymentID: name,
+		DeploymentID: uuidDeploymentName,
 		Name:         resource.Name,
 	}
 
@@ -221,7 +213,13 @@ func (s *VNFInstanceService) DeleteHandler(w http.ResponseWriter, r *http.Reques
 
 	err := s.Client.DeleteDeployment(vars["vnfInstanceId"])
 	if err != nil {
-		// TODO (electrocucaracha): Determines the existence of the resource
+		werr := pkgerrors.Wrap(err, "Delete VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = s.Client.DeleteService(vars["vnfInstanceId"])
+	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
