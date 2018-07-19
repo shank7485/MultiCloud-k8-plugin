@@ -6,15 +6,20 @@
 
     ```
     {
-        "csar_id": "1",
-        "csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
-        "vnfdId": "100",
-        "oof_parameters": {
-            "key_values": {
-                "key1": "value1",
-                "key2": "value2"
-            }
-        }
+	    "cloud_region_id": "region1",
+	    "csar_id": "uuid",
+	    "oof_parameters": [{
+		    "key1": "value1",
+		    "key2": "value2",
+		    "key3": {}
+	    }],
+	    "network_parameters": {
+		    "oam_ip_address": {
+			    "connection_point": "string",
+			    "ip_address": "string",
+			    "workload_name": "string"
+		    }
+	    }
     }
     ```
 
