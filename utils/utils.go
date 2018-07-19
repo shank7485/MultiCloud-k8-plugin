@@ -15,7 +15,9 @@ package utils
 
 import (
 	"archive/zip"
+	"errors"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -110,46 +112,80 @@ func (c *CSARFile) Delete(path string) error {
 
 // GetCSARFromURL to download the CSAR files from URL and extract it
 // to get deployment and service yamls
-var GetCSARFromURL = func(csarID string, csarURL string) (*krd.KubernetesData, error) {
+// var GetCSARFromURL = func(csarID string, csarURL string) (*krd.KubernetesData, error) {
 
-	// 1. Download CSAR file
-	err := CSAR.Download("csar_file.zip", csarURL)
-	if err != nil {
-		return nil, err
-	}
+// 	// 1. Download CSAR file
+// 	err := CSAR.Download("csar_file.zip", csarURL)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	// 2. Unzip CSAR file which will contain a deployment folder containining
-	// deployment.yaml and service.yaml.
-	err = CSAR.Unzip("csar_file.zip")
-	if err != nil {
-		return nil, err
-	}
+// 	// 2. Unzip CSAR file which will contain a deployment folder containining
+// 	// deployment.yaml and service.yaml.
+// 	err = CSAR.Unzip("csar_file.zip")
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
+// 	kubeData := &krd.KubernetesData{}
+
+// 	// 3. Read the deployment.yaml and service.yaml and set the deployment and
+// 	// service structs.
+// 	err = kubeData.ReadDeploymentYAML(csarID + "/deployment.yaml")
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	err = kubeData.ReadServiceYAML(csarID + "/service.yaml")
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// 4. Delete extracted directory.
+// 	err = CSAR.Delete(csarID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// 5. Delete CSAR file.
+// 	err = CSAR.Delete("csar_file.zip")
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// 6. Return kubeData struct for kubernetes client to spin things up.
+// 	return kubeData, nil
+// }
+
+// ReadCSARFromFileSystem reads the CSAR files from the files system
+var ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
 	kubeData := &krd.KubernetesData{}
+	var path string
 
-	// 3. Read the deployment.yaml and service.yaml and set the deployment and
-	// service structs.
-	err = kubeData.ReadDeploymentYAML(csarID + "/deployment.yaml")
-	if err != nil {
-		return nil, err
-	}
-	err = kubeData.ReadServiceYAML(csarID + "/service.yaml")
-	if err != nil {
-		return nil, err
+	path = os.Getenv("CSAR_DIR") + "/" + csarID + "/deployment.yaml" // Remove utils path
+
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil, errors.New("File " + path + "does not exists")
 	}
 
-	// 4. Delete extracted directory.
-	err = CSAR.Delete(csarID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 5. Delete CSAR file.
-	err = CSAR.Delete("csar_file.zip")
+	log.Println("deployment file: " + path)
+	err = kubeData.ReadDeploymentYAML(path)
 	if err != nil {
 		return nil, err
 	}
 
-	// 6. Return kubeData struct for kubernetes client to spin things up.
+	path = os.Getenv("CSAR_DIR") + "/" + csarID + "/service.yaml" // Remove utils path
+
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil, errors.New("File " + path + " does not exists")
+	}
+
+	log.Println("service file: " + path)
+	err = kubeData.ReadServiceYAML(path)
+	if err != nil {
+		return nil, err
+	}
+
 	return kubeData, nil
 }

@@ -122,16 +122,20 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 func TestVNFInstanceCreation(t *testing.T) {
 	t.Run("Succesful create a VNF", func(t *testing.T) {
 		payload := []byte(`{
-			"csar_id": "1",
-			"csar_url": "url",
-			"oof_parameters": {
-				"key_values": {
-					"key1": "value1",
-					"key2": "value2"
+			"cloud_region_id": "region1",
+			"csar_id": "UUID-1",
+			"oof_parameters": [{
+				"key1": "value1",
+				"key2": "value2",
+				"key3": {}
+			}],
+			"network_parameters": {
+				"oam_ip_address": {
+					"connection_point": "string",
+					"ip_address": "string",
+					"workload_name": "string"
 				}
-			},
-			"vnf_instance_name": "test",
-			"vnf_instance_description": "vRouter_test_description"
+			}
 		}`)
 		expected := &CreateVnfResponse{
 			Name: "vRouter_test",
@@ -147,7 +151,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 				},
 			}, nil
 		}
-		utils.GetCSARFromURL = func(csarID string, csarURL string) (*krd.KubernetesData, error) {
+		utils.ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
 			kubeData := &krd.KubernetesData{
 				Deployment: &appsV1.Deployment{},
 				Service:    &coreV1.Service{},
@@ -250,25 +254,46 @@ func TestVNFInstanceDeletion(t *testing.T) {
 func TestVNFInstanceUpdate(t *testing.T) {
 	t.Run("Succesful update a VNF", func(t *testing.T) {
 		payload := []byte(`{
-			"csar_id": "1",
-			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
-			"oof_parameters": {
-				"key_values": {
-					"key1": "value1",
-					"key2": "value2"
+			"cloud_region_id": "region1",
+			"csar_id": "UUID-1",
+			"oof_parameters": [{
+				"key1": "value1",
+				"key2": "value2",
+				"key3": {}
+			}],
+			"network_parameters": {
+				"oam_ip_address": {
+					"connection_point": "string",
+					"ip_address": "string",
+					"workload_name": "string"
 				}
-			},
-			"vnf_instance_name": "test",
-			"vnf_instance_description": "vRouter_test_description"
+			}
 		}`)
-		var result UpdateVnfResponse
-
-		req, _ := http.NewRequest("PUT", "/v1/vnf_instances/1", bytes.NewBuffer(payload))
-		response := executeRequest(req)
-
 		expected := &UpdateVnfResponse{
 			DeploymentID: "1",
 		}
+
+		var result UpdateVnfResponse
+
+		req, _ := http.NewRequest("PUT", "/v1/vnf_instances/1", bytes.NewBuffer(payload))
+
+		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+			return &mockClient{
+				update: func() error {
+					return nil
+				},
+			}, nil
+		}
+		utils.ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
+			kubeData := &krd.KubernetesData{
+				Deployment: &appsV1.Deployment{},
+				Service:    &coreV1.Service{},
+			}
+			return kubeData, nil
+		}
+
+		response := executeRequest(req)
+		checkResponseCode(t, http.StatusCreated, response.Code)
 
 		err := json.NewDecoder(response.Body).Decode(&result)
 		if err != nil {

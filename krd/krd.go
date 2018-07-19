@@ -253,6 +253,7 @@ type KubernetesData struct {
 // ReadDeploymentYAML reads deployment.yaml and stores in CSARData struct
 func (c *KubernetesData) ReadDeploymentYAML(yamlFilePath string) error {
 	if _, err := os.Stat(yamlFilePath); err == nil {
+		log.Println("Reading deployment YAML")
 		rawBytes, err := ioutil.ReadFile(yamlFilePath)
 		if err != nil {
 			return pkgerrors.Wrap(err, "Deployment YAML file read error")
@@ -271,6 +272,7 @@ func (c *KubernetesData) ReadDeploymentYAML(yamlFilePath string) error {
 // ReadServiceYAML reads service.yaml and stores in CSARData struct
 func (c *KubernetesData) ReadServiceYAML(yamlFilePath string) error {
 	if _, err := os.Stat(yamlFilePath); err == nil {
+		log.Println("Reading service YAML")
 		rawBytes, err := ioutil.ReadFile(yamlFilePath)
 		if err != nil {
 			return pkgerrors.Wrap(err, "Service YAML file read error")
@@ -366,6 +368,6 @@ func AddNetworkAnnotationsToPod(c *KubernetesData, networksList []string) {
 	networksString += "]"
 
 	deployment.Spec.Template.ObjectMeta = metaV1.ObjectMeta{
-		Annotations: map[string]string{"networks": networksString},
+		Annotations: map[string]string{"kubernetes.v1.cni.cncf.io/networks": networksString},
 	}
 }

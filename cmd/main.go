@@ -34,6 +34,11 @@ func main() {
 	}
 	flag.Parse()
 
+	err := api.CheckInitialSettings()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	router := api.NewRouter(kubeconfig)
 	loggedRouter := handlers.LoggingHandler(os.Stdout, router)
 	log.Println("Starting Kubernetes Multicloud API")
