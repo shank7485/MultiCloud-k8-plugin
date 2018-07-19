@@ -112,15 +112,30 @@ definitions:
   POSTRequest:
     type: "object"
     properties:
-      csar_url:
+      cloud_region_id:
         type: "string"
       csar_id:
         type: "string"
       oof_parameters:
+        items:
+          type: "object"
+          additionalProperties: true
+          example:
+            key1: value1
+            key2: value2
+            key3: {}
+      network_parameters:
         type: "object"
         properties:
-          key_values:
+          oam_ip_address:
             type: "object"
+            properties:
+              connection_point:
+                type: "string"
+              ip_address:
+                type: "string"
+              workload_name:
+                type: "string"
   POSTResponse:
     type: "object"
     properties:

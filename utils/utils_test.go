@@ -106,12 +106,8 @@ func TestReadServiceYAML(t *testing.T) {
 	})
 }
 
-func TestGetCSARFromURL(t *testing.T) {
+func TestReadCSARFromFileSystem(t *testing.T) {
 	t.Run("Successfully create Deployment and Service objects", func(t *testing.T) {
-		oldcsarfile := CSAR
-		CSAR = &mockCSARFile{}
-		defer func() { CSAR = oldcsarfile }()
-
 		expectedDeployment := &appsV1.Deployment{
 			ObjectMeta: metaV1.ObjectMeta{
 				Name: "sise-deploy",
@@ -152,17 +148,17 @@ func TestGetCSARFromURL(t *testing.T) {
 		expectedService.APIVersion = "v1"
 		expectedService.Kind = "Service"
 
-		kubeData, err := GetCSARFromURL("mock_yamls", "www.example.com")
+		kubeData, err := ReadCSARFromFileSystem("mock_yamls")
 		if err != nil {
-			t.Fatalf("TestGetCSARFromURL returned an error (%s)", err)
+			t.Fatalf("TestReadCSARFromFileSystem returned an error (%s)", err)
 		}
 
 		if !reflect.DeepEqual(expectedService, kubeData.Service) {
-			t.Fatalf("TestGetCSARFromURL returned:\n result=%v\n expected=%v", kubeData.Service, expectedService)
+			t.Fatalf("TestReadCSARFromFileSystem returned:\n result=%v\n expected=%v", kubeData.Service, expectedService)
 		}
 
 		if !reflect.DeepEqual(expectedDeployment, kubeData.Deployment) {
-			t.Fatalf("TestGetCSARFromURL returned:\n result=%v\n expected=%v", kubeData.Deployment, expectedDeployment)
+			t.Fatalf("TestReadCSARFromFileSystem returned:\n result=%v\n expected=%v", kubeData.Deployment, expectedDeployment)
 		}
 	})
 }

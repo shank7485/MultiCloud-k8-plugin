@@ -76,14 +76,15 @@ var GetVNFClient = func(kubeConfigPath string) (VNFInstanceClientInterface, erro
 }
 
 func validateBody(body interface{}) error {
+	// net := NetworkParameters{}
 	switch b := body.(type) {
 	case CreateVnfRequest:
-		if b.CsarID == "" || b.CsarURL == "" || b.Name == "" {
+		if b.CloudRegionID == "" || b.CsarID == "" {
 			werr := pkgerrors.Wrap(errors.New("Invalid Data in POST request"), "CreateVnfRequest bad request")
 			return werr
 		}
 	case UpdateVnfRequest:
-		if b.CsarID == "" || b.CsarURL == "" || b.Name == "" {
+		if b.CloudRegionID == "" || b.CsarID == "" {
 			werr := pkgerrors.Wrap(errors.New("Invalid Data in PUT request"), "UpdateVnfRequest bad request")
 			return werr
 		}
@@ -120,13 +121,21 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	log.Println("Deployment: " + uuidDeploymentName)
 	log.Println("Service: " + uuidServiceName)
 
-	utils.CSAR = &utils.CSARFile{} // This is ugly. Move things to create better mocks.
-	kubeData, err := utils.GetCSARFromURL(resource.CsarID, resource.CsarURL)
+	// utils.CSAR = &utils.CSARFile{} // This is ugly. Move things to create better mocks.
+
+	kubeData, err := utils.ReadCSARFromFileSystem(resource.CsarID)
 	if err != nil {
-		werr := pkgerrors.Wrap(err, "Get Kubernetes Data information error")
+		werr := pkgerrors.Wrap(err, "Read Kubernetes Data information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
+	// kubeData, err := utils.GetCSARFromURL(resource.CsarID, resource.CsarURL)
+	// if err != nil {
+	// 	werr := pkgerrors.Wrap(err, "Get Kubernetes Data information error")
+	// 	http.Error(w, werr.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
+
 	// Kubernetes Identifies resources by names. The UID setting doesn't seem to the primary ID.
 	// deployment.UID = types.UID(resource.CsarID) + types.UID("_") + uuid
 	if kubeData.Deployment == nil {
@@ -136,12 +145,16 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	}
 	kubeData.Deployment.Name = uuidDeploymentName
 
+	// kubeData.Deployment.Namespace = ""
+
 	if kubeData.Service == nil {
 		werr := pkgerrors.Wrap(err, "Create VNF service error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 	kubeData.Service.Name = uuidServiceName
+
+	// krd.AddNetworkAnnotationsToPod(kubeData, resource.Networks)
 
 	name, err := s.Client.CreateDeployment(kubeData.Deployment)
 	if err != nil {
@@ -152,7 +165,7 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 
 	name, err = s.Client.CreateService(kubeData.Service)
 	if err != nil {
-		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
+		werr := pkgerrors.Wrap(err, "Create VNF service error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -235,8 +248,14 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	utils.CSAR = &utils.CSARFile{}
-	kubeData, err := utils.GetCSARFromURL(resource.CsarID, resource.CsarURL)
+	err = validateBody(resource)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	// utils.CSAR = &utils.CSARFile{}
+	kubeData, err := utils.ReadCSARFromFileSystem(resource.CsarID)
 
 	if kubeData.Deployment == nil {
 		werr := pkgerrors.Wrap(err, "Update VNF deployment error")
@@ -246,7 +265,7 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 	kubeData.Deployment.SetUID(types.UID(id))
 
 	if err != nil {
-		werr := pkgerrors.Wrap(err, "Get Deployment information error")
+		werr := pkgerrors.Wrap(err, "Update VNF deployment information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}

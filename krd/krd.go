@@ -366,6 +366,6 @@ func AddNetworkAnnotationsToPod(c *KubernetesData, networksList []string) {
 	networksString += "]"
 
 	deployment.Spec.Template.ObjectMeta = metaV1.ObjectMeta{
-		Annotations: map[string]string{"networks": networksString},
+		Annotations: map[string]string{"kubernetes.v1.cni.cncf.io/networks": networksString},
 	}
 }

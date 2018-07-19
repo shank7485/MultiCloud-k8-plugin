@@ -15,11 +15,12 @@ package api
 
 // CreateVnfRequest contains the VNF creation request parameters
 type CreateVnfRequest struct {
-	CsarID      string        `json:"csar_id"`
-	CsarURL     string        `json:"csar_url"`
-	OOFParams   OOFParameters `json:"oof_parameters"`
-	Name        string        `json:"vnf_instance_name"`
-	Description string        `json:"vnf_instance_description"`
+	CloudRegionID string                   `json:"cloud_region_id"`
+	CsarID        string                   `json:"csar_id"`
+	OOFParams     []map[string]interface{} `json:"oof_parameters"`
+	NetworkParams NetworkParameters        `json:"network_parameters"`
+	Name          string                   `json:"vnf_instance_name"`
+	Description   string                   `json:"vnf_instance_description"`
 }
 
 // CreateVnfResponse contains the VNF creation response parameters
@@ -33,18 +34,27 @@ type ListVnfsResponse struct {
 	VNFs []string `json:"vnf_list"`
 }
 
-// OOFParameters contains additional information required for the VNF instance
-type OOFParameters struct {
-	KeyValues map[string]string `json:"key_values"`
+// NetworkParameters contains the networking info required by the VNF instance
+type NetworkParameters struct {
+	OAMI OAMIPParams `json:"oam_ip_address"`
+	// Add other network parameters if necessary.
+}
+
+// OAMIPParams contains the management networking info required by the VNF instance
+type OAMIPParams struct {
+	ConnectionPoint string `json:"connection_point"`
+	IPAddress       string `json:"ip_address"`
+	WorkLoadName    string `json:"workload_name"`
 }
 
 // UpdateVnfRequest contains the VNF creation parameters
 type UpdateVnfRequest struct {
-	CsarID      string        `json:"csar_id"`
-	CsarURL     string        `json:"csar_url"`
-	OOFParams   OOFParameters `json:"oof_parameters"`
-	Name        string        `json:"vnf_instance_name"`
-	Description string        `json:"vnf_instance_description"`
+	CloudRegionID string                   `json:"cloud_region_id"`
+	CsarID        string                   `json:"csar_id"`
+	OOFParams     []map[string]interface{} `json:"oof_parameters"`
+	NetworkParams NetworkParameters        `json:"network_parameters"`
+	Name          string                   `json:"vnf_instance_name"`
+	Description   string                   `json:"vnf_instance_description"`
 }
 
 // UpdateVnfResponse contains the VNF update response parameters
