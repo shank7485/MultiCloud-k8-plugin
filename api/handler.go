@@ -114,8 +114,9 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Not using "_" since only "." and "-" are allowed for deployment names.
-	uuidDeploymentName := resource.CsarID + "-" + string(uuid.NewUUID())
-	uuidServiceName := resource.CsarID + "-" + string(uuid.NewUUID())
+	id := string(uuid.NewUUID())
+	uuidDeploymentName := resource.CsarID + "-" + id
+	uuidServiceName := resource.CsarID + "-" + id
 
 	// Persist in AAI database.
 	log.Println("Deployment: " + uuidDeploymentName)
