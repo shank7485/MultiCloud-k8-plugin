@@ -76,7 +76,6 @@ var GetVNFClient = func(kubeConfigPath string) (VNFInstanceClientInterface, erro
 }
 
 func validateBody(body interface{}) error {
-	// net := NetworkParameters{}
 	switch b := body.(type) {
 	case CreateVnfRequest:
 		if b.CloudRegionID == "" || b.CsarID == "" {

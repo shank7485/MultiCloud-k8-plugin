@@ -32,13 +32,6 @@ func CheckInitialSettings() error {
 // NewRouter creates a router instance that serves the VNFInstance web methods
 func NewRouter(kubeconfig string) (s *mux.Router) {
 	service, err := NewVNFInstanceService(kubeconfig)
-	/*
-
-		{
-			"default": clientset.deploylments.namespace("default")
-			"test": clientset.deploylments.namespace("test")
-		}
-	*/
 
 	if err != nil {
 		log.Panic(pkgerrors.Wrap(err, "Creation of a service error"))

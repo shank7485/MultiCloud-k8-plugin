@@ -92,8 +92,6 @@ var GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientSe
 		return nil, nil, err
 	}
 
-	// deploy = clientset.AppsV1().Deployments("default")
-	// service = clientset.CoreV1().Services("default")
 	deploy = clientset.AppsV1()
 	service = clientset.CoreV1()
 
