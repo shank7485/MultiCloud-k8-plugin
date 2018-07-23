@@ -50,12 +50,12 @@ const APIVersion = "apps/v1"
 // Update(*appsV1.Deployment) (*appsV1.Deployment, error)
 // Get(name string, options metaV1.GetOptions) (*appsV1.Deployment, error)
 type ClientDeploymentInterface interface {
-	appsV1Interface.DeploymentInterface
+	appsV1Interface.AppsV1Interface
 }
 
 // ClientServiceInterface is for Service clients
 type ClientServiceInterface interface {
-	coreV1Interface.ServiceInterface
+	coreV1Interface.CoreV1Interface
 }
 
 // NewClient loads Kubernetes local configuration values into a client
@@ -92,8 +92,10 @@ var GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientSe
 		return nil, nil, err
 	}
 
-	deploy = clientset.AppsV1().Deployments("default")
-	service = clientset.CoreV1().Services("default")
+	// deploy = clientset.AppsV1().Deployments("default")
+	// service = clientset.CoreV1().Services("default")
+	deploy = clientset.AppsV1()
+	service = clientset.CoreV1()
 
 	return deploy, service, nil
 }
@@ -102,7 +104,7 @@ var GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientSe
 
 // CreateDeployment object in a specific Kubernetes Deployment
 func (c *Client) CreateDeployment(deployment *appsV1.Deployment) (string, error) {
-	result, err := c.deploymentClient.Create(deployment)
+	result, err := c.deploymentClient.Deployments("default").Create(deployment)
 	if err != nil {
 		return "", pkgerrors.Wrap(err, "Create Deployment error")
 	}
@@ -118,7 +120,7 @@ func (c *Client) ListDeployment(limit int64) (*[]string, error) {
 	opts.APIVersion = APIVersion
 	opts.Kind = "Deployment"
 
-	list, err := c.deploymentClient.List(opts)
+	list, err := c.deploymentClient.Deployments("default").List(opts)
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "Get Deployment list error")
 	}
@@ -135,7 +137,7 @@ func (c *Client) ListDeployment(limit int64) (*[]string, error) {
 func (c *Client) DeleteDeployment(name string) error {
 	deletePolicy := metaV1.DeletePropagationForeground
 
-	err := c.deploymentClient.Delete(name, &metaV1.DeleteOptions{
+	err := c.deploymentClient.Deployments("default").Delete(name, &metaV1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	})
 	if err != nil {
@@ -146,7 +148,7 @@ func (c *Client) DeleteDeployment(name string) error {
 
 // UpdateDeployment existing deployments hosting in a specific Kubernetes Deployment
 func (c *Client) UpdateDeployment(deployment *appsV1.Deployment) error {
-	_, err := c.deploymentClient.Update(deployment)
+	_, err := c.deploymentClient.Deployments("default").Update(deployment)
 	if err != nil {
 		return pkgerrors.Wrap(err, "Update Deployment error")
 	}
@@ -159,7 +161,7 @@ func (c *Client) GetDeployment(name string) (string, error) {
 	opts.APIVersion = APIVersion
 	opts.Kind = "Deployment"
 
-	deployment, err := c.deploymentClient.Get(name, opts)
+	deployment, err := c.deploymentClient.Deployments("default").Get(name, opts)
 	if err != nil {
 		return "", pkgerrors.Wrap(err, "Get Deployment error")
 	}
@@ -168,7 +170,7 @@ func (c *Client) GetDeployment(name string) (string, error) {
 
 // CreateService object in a specific Kubernetes Deployment
 func (c *Client) CreateService(service *coreV1.Service) (string, error) {
-	result, err := c.serviceClient.Create(service)
+	result, err := c.serviceClient.Services("default").Create(service)
 	if err != nil {
 		return "", pkgerrors.Wrap(err, "Create Service error")
 	}
@@ -184,7 +186,7 @@ func (c *Client) ListService(limit int64) (*[]string, error) {
 	opts.APIVersion = APIVersion
 	opts.Kind = "Service"
 
-	list, err := c.serviceClient.List(opts)
+	list, err := c.serviceClient.Services("default").List(opts)
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "Get Service list error")
 	}
@@ -199,7 +201,7 @@ func (c *Client) ListService(limit int64) (*[]string, error) {
 
 // UpdateService updates an existing Kubernetes service
 func (c *Client) UpdateService(service *coreV1.Service) error {
-	_, err := c.serviceClient.Update(service)
+	_, err := c.serviceClient.Services("default").Update(service)
 	if err != nil {
 		return pkgerrors.Wrap(err, "Update Service error")
 	}
@@ -210,7 +212,7 @@ func (c *Client) UpdateService(service *coreV1.Service) error {
 func (c *Client) DeleteService(name string) error {
 	deletePolicy := metaV1.DeletePropagationForeground
 
-	err := c.serviceClient.Delete(name, &metaV1.DeleteOptions{
+	err := c.serviceClient.Services("default").Delete(name, &metaV1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	})
 	if err != nil {
@@ -225,7 +227,7 @@ func (c *Client) GetService(name string) (string, error) {
 	opts.APIVersion = APIVersion
 	opts.Kind = "Service"
 
-	service, err := c.serviceClient.Get(name, opts)
+	service, err := c.serviceClient.Services("default").Get(name, opts)
 	if err != nil {
 		return "", pkgerrors.Wrap(err, "Get Service error")
 	}

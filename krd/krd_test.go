@@ -24,6 +24,19 @@ import (
 	coreV1Interface "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
+type mockAppsV1 struct {
+	appsV1Interface.AppsV1Interface
+
+	deployments func() *mockDeploymentClient
+}
+
+func (c *mockAppsV1) Deployments(namespace string) appsV1Interface.DeploymentInterface {
+	if c.deployments != nil {
+		return c.deployments()
+	}
+	return nil
+}
+
 type mockDeploymentClient struct {
 	appsV1Interface.DeploymentInterface
 
@@ -68,6 +81,19 @@ func (c *mockDeploymentClient) Get(name string, options metaV1.GetOptions) (*app
 		return c.get()
 	}
 	return nil, nil
+}
+
+type mockCoreV1 struct {
+	coreV1Interface.CoreV1Interface
+
+	services func() *mockServiceClient
+}
+
+func (c *mockCoreV1) Services(namespace string) coreV1Interface.ServiceInterface {
+	if c.services != nil {
+		return c.services()
+	}
+	return nil
 }
 
 type mockServiceClient struct {
@@ -132,17 +158,27 @@ func TestClientCreateMethod(t *testing.T) {
 		}
 
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
-			mockDeploy := &mockDeploymentClient{
-				create: func() (*appsV1.Deployment, error) {
-					return inputDeploy, nil
+			mockAppsv1 := &mockAppsV1{
+				deployments: func() *mockDeploymentClient {
+					mockDeploy := &mockDeploymentClient{
+						create: func() (*appsV1.Deployment, error) {
+							return inputDeploy, nil
+						},
+					}
+					return mockDeploy
 				},
 			}
-			mockService := &mockServiceClient{
-				create: func() (*coreV1.Service, error) {
-					return inputService, nil
+			mockCorev1 := &mockCoreV1{
+				services: func() *mockServiceClient {
+					mockService := &mockServiceClient{
+						create: func() (*coreV1.Service, error) {
+							return inputService, nil
+						},
+					}
+					return mockService
 				},
 			}
-			return mockDeploy, mockService, nil
+			return mockAppsv1, mockCorev1, nil
 		}
 
 		client, _ := NewClient("")
@@ -197,18 +233,30 @@ func TestClientListMethod(t *testing.T) {
 				},
 			},
 		}
+
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
-			mockDeploy := &mockDeploymentClient{
-				list: func() (*appsV1.DeploymentList, error) {
-					return inputDeploy, nil
+			mockAppsv1 := &mockAppsV1{
+				deployments: func() *mockDeploymentClient {
+					mockDeploy := &mockDeploymentClient{
+						list: func() (*appsV1.DeploymentList, error) {
+							return inputDeploy, nil
+						},
+					}
+					return mockDeploy
 				},
 			}
-			mockService := &mockServiceClient{
-				list: func() (*coreV1.ServiceList, error) {
-					return inputService, nil
+			mockCorev1 := &mockCoreV1{
+				services: func() *mockServiceClient {
+					mockService := &mockServiceClient{
+						list: func() (*coreV1.ServiceList, error) {
+							return inputService, nil
+						},
+					}
+					return mockService
 				},
 			}
-			return mockDeploy, mockService, nil
+
+			return mockAppsv1, mockCorev1, nil
 		}
 		client, _ := NewClient("")
 		resultDeploy, err := client.ListDeployment(10)
@@ -232,19 +280,31 @@ func TestClientListMethod(t *testing.T) {
 
 func TestClientDeleteMethod(t *testing.T) {
 	t.Run("Succesful deployment and service deletion", func(t *testing.T) {
+
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
-			mockDeploy := &mockDeploymentClient{
-				delete: func() error {
-					return nil
+			mockAppsv1 := &mockAppsV1{
+				deployments: func() *mockDeploymentClient {
+					mockDeploy := &mockDeploymentClient{
+						delete: func() error {
+							return nil
+						},
+					}
+					return mockDeploy
 				},
 			}
-			mockService := &mockServiceClient{
-				delete: func() error {
-					return nil
+			mockCorev1 := &mockCoreV1{
+				services: func() *mockServiceClient {
+					mockService := &mockServiceClient{
+						delete: func() error {
+							return nil
+						},
+					}
+					return mockService
 				},
 			}
-			return mockDeploy, mockService, nil
+			return mockAppsv1, mockCorev1, nil
 		}
+
 		client, _ := NewClient("")
 		err := client.DeleteDeployment("test")
 		if err != nil {
@@ -274,17 +334,27 @@ func TestClientUpdateMethod(t *testing.T) {
 		}
 
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
-			mockDeploy := &mockDeploymentClient{
-				update: func() (*appsV1.Deployment, error) {
-					return inputDeploy, nil
+			mockAppsv1 := &mockAppsV1{
+				deployments: func() *mockDeploymentClient {
+					mockDeploy := &mockDeploymentClient{
+						update: func() (*appsV1.Deployment, error) {
+							return inputDeploy, nil
+						},
+					}
+					return mockDeploy
 				},
 			}
-			mockService := &mockServiceClient{
-				update: func() (*coreV1.Service, error) {
-					return inputService, nil
+			mockCorev1 := &mockCoreV1{
+				services: func() *mockServiceClient {
+					mockService := &mockServiceClient{
+						update: func() (*coreV1.Service, error) {
+							return inputService, nil
+						},
+					}
+					return mockService
 				},
 			}
-			return mockDeploy, mockService, nil
+			return mockAppsv1, mockCorev1, nil
 		}
 
 		client, _ := NewClient("")
@@ -318,18 +388,29 @@ func TestClientGetMethod(t *testing.T) {
 		}
 
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
-			mockDeploy := &mockDeploymentClient{
-				get: func() (*appsV1.Deployment, error) {
-					return outputDeploy, nil
+			mockAppsv1 := &mockAppsV1{
+				deployments: func() *mockDeploymentClient {
+					mockDeploy := &mockDeploymentClient{
+						get: func() (*appsV1.Deployment, error) {
+							return outputDeploy, nil
+						},
+					}
+					return mockDeploy
 				},
 			}
-			mockService := &mockServiceClient{
-				get: func() (*coreV1.Service, error) {
-					return outputService, nil
+			mockCorev1 := &mockCoreV1{
+				services: func() *mockServiceClient {
+					mockService := &mockServiceClient{
+						get: func() (*coreV1.Service, error) {
+							return outputService, nil
+						},
+					}
+					return mockService
 				},
 			}
-			return mockDeploy, mockService, nil
+			return mockAppsv1, mockCorev1, nil
 		}
+
 		client, _ := NewClient("")
 		result, err := client.GetDeployment(expected)
 		if err != nil {

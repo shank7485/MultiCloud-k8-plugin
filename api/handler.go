@@ -136,7 +136,7 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-	kubeData.Deployment.Namespace = "default"
+	// kubeData.Deployment.Namespace = "test"
 	kubeData.Deployment.Name = uuidDeploymentName
 
 	if kubeData.Service == nil {
@@ -144,7 +144,7 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-	kubeData.Service.Namespace = "default"
+	// kubeData.Service.Namespace = "test"
 	kubeData.Service.Name = uuidServiceName
 
 	// krd.AddNetworkAnnotationsToPod(kubeData, resource.Networks)
