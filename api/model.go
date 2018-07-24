@@ -19,6 +19,7 @@ type CreateVnfRequest struct {
 	CsarID        string                   `json:"csar_id"`
 	OOFParams     []map[string]interface{} `json:"oof_parameters"`
 	NetworkParams NetworkParameters        `json:"network_parameters"`
+	Namespace     string                   `json:"namespace"`
 	Name          string                   `json:"vnf_instance_name"`
 	Description   string                   `json:"vnf_instance_description"`
 }
@@ -53,6 +54,7 @@ type UpdateVnfRequest struct {
 	CsarID        string                   `json:"csar_id"`
 	OOFParams     []map[string]interface{} `json:"oof_parameters"`
 	NetworkParams NetworkParameters        `json:"network_parameters"`
+	Namespace     string                   `json:"namespace"`
 	Name          string                   `json:"vnf_instance_name"`
 	Description   string                   `json:"vnf_instance_description"`
 }

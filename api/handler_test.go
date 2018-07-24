@@ -35,70 +35,70 @@ type mockClient struct {
 	get    func() (string, error)
 }
 
-func (c *mockClient) CreateDeployment(deployment *appsV1.Deployment) (string, error) {
+func (c *mockClient) CreateDeployment(deployment *appsV1.Deployment, namespace string) (string, error) {
 	if c.create != nil {
 		return c.create()
 	}
 	return "", nil
 }
 
-func (c *mockClient) ListDeployment(limit int64) (*[]string, error) {
+func (c *mockClient) ListDeployment(limit int64, namespace string) (*[]string, error) {
 	if c.list != nil {
 		return c.list()
 	}
 	return nil, nil
 }
 
-func (c *mockClient) DeleteDeployment(name string) error {
+func (c *mockClient) DeleteDeployment(name string, namespace string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) UpdateDeployment(deployment *appsV1.Deployment) error {
+func (c *mockClient) UpdateDeployment(deployment *appsV1.Deployment, namespace string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) GetDeployment(name string) (string, error) {
+func (c *mockClient) GetDeployment(name string, namespace string) (string, error) {
 	if c.get != nil {
 		return c.get()
 	}
 	return "", nil
 }
 
-func (c *mockClient) CreateService(service *coreV1.Service) (string, error) {
+func (c *mockClient) CreateService(service *coreV1.Service, namespace string) (string, error) {
 	if c.create != nil {
 		return c.create()
 	}
 	return "", nil
 }
 
-func (c *mockClient) ListService(limit int64) (*[]string, error) {
+func (c *mockClient) ListService(limit int64, namespace string) (*[]string, error) {
 	if c.list != nil {
 		return c.list()
 	}
 	return nil, nil
 }
 
-func (c *mockClient) DeleteService(name string) error {
+func (c *mockClient) DeleteService(name string, namespace string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) UpdateService(service *coreV1.Service) error {
+func (c *mockClient) UpdateService(service *coreV1.Service, namespace string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) GetService(name string) (string, error) {
+func (c *mockClient) GetService(name string, namespace string) (string, error) {
 	if c.get != nil {
 		return c.get()
 	}

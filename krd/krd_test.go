@@ -182,7 +182,7 @@ func TestClientCreateMethod(t *testing.T) {
 		}
 
 		client, _ := NewClient("")
-		resultDeploy, err := client.CreateDeployment(inputDeploy)
+		resultDeploy, err := client.CreateDeployment(inputDeploy, "")
 		if err != nil {
 			t.Fatalf("TestClientCreateMethod Deployment returned an error (%s)", err)
 		}
@@ -190,7 +190,7 @@ func TestClientCreateMethod(t *testing.T) {
 			t.Fatalf("TestClientCreateMethod Deployment returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
 		}
 
-		resultService, err := client.CreateService(inputService)
+		resultService, err := client.CreateService(inputService, "")
 		if err != nil {
 			t.Fatalf("TestClientCreateMethod Service returned an error (%s)", err)
 		}
@@ -259,7 +259,7 @@ func TestClientListMethod(t *testing.T) {
 			return mockAppsv1, mockCorev1, nil
 		}
 		client, _ := NewClient("")
-		resultDeploy, err := client.ListDeployment(10)
+		resultDeploy, err := client.ListDeployment(10, "")
 		if err != nil {
 			t.Fatalf("TestClientListMethod Deployment returned an error (%s)", err)
 		}
@@ -267,7 +267,7 @@ func TestClientListMethod(t *testing.T) {
 			t.Fatalf("TestClientListMethod Deployment returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
 		}
 
-		resultService, err := client.ListService(10)
+		resultService, err := client.ListService(10, "")
 		if err != nil {
 			t.Fatalf("TestClientListMethod Service returned an error (%s)", err)
 		}
@@ -306,12 +306,12 @@ func TestClientDeleteMethod(t *testing.T) {
 		}
 
 		client, _ := NewClient("")
-		err := client.DeleteDeployment("test")
+		err := client.DeleteDeployment("test", "")
 		if err != nil {
 			t.Fatalf("TestClientDeleteMethod Deployment returned an error (%s)", err)
 		}
 
-		err = client.DeleteService("test")
+		err = client.DeleteService("test", "")
 		if err != nil {
 			t.Fatalf("TestClientDeleteMethod Service returned an error (%s)", err)
 		}
@@ -361,12 +361,12 @@ func TestClientUpdateMethod(t *testing.T) {
 		inputDeploy.SetName("New-sise-deploy")
 		inputService.SetName("New-sise-service")
 
-		err := client.UpdateDeployment(inputDeploy)
+		err := client.UpdateDeployment(inputDeploy, "")
 		if err != nil {
 			t.Fatalf("TestClientUpdateMethod Deployment returned an error (%s)", err)
 		}
 
-		err = client.UpdateService(inputService)
+		err = client.UpdateService(inputService, "")
 		if err != nil {
 			t.Fatalf("TestClientUpdateMethod Service returned an error (%s)", err)
 		}
@@ -412,7 +412,7 @@ func TestClientGetMethod(t *testing.T) {
 		}
 
 		client, _ := NewClient("")
-		result, err := client.GetDeployment(expected)
+		result, err := client.GetDeployment(expected, "")
 		if err != nil {
 			t.Fatalf("TestClientGetMethod Deployment returned an error (%s)", err)
 		}
@@ -420,7 +420,7 @@ func TestClientGetMethod(t *testing.T) {
 			t.Fatalf("TestClientGetMethod Deployment returned:\n result=%v\n expected=%v", result, expected)
 		}
 
-		result, err = client.GetService(expected)
+		result, err = client.GetService(expected, "")
 		if err != nil {
 			t.Fatalf("TestClientGetMethod Service returned an error (%s)", err)
 		}

@@ -40,17 +40,17 @@ type VNFInstanceService struct {
 // package. This is done so that we can use the Client inside the VNFInstanceService
 // above.
 type VNFInstanceClientInterface interface {
-	CreateDeployment(deployment *appsV1.Deployment) (string, error)
-	ListDeployment(limit int64) (*[]string, error)
-	UpdateDeployment(deployment *appsV1.Deployment) error
-	DeleteDeployment(name string) error
-	GetDeployment(name string) (string, error)
+	CreateDeployment(deployment *appsV1.Deployment, namespace string) (string, error)
+	ListDeployment(limit int64, namespace string) (*[]string, error)
+	UpdateDeployment(deployment *appsV1.Deployment, namespace string) error
+	DeleteDeployment(name string, namespace string) error
+	GetDeployment(name string, namespace string) (string, error)
 
-	CreateService(service *coreV1.Service) (string, error)
-	ListService(limit int64) (*[]string, error)
-	UpdateService(service *coreV1.Service) error
-	DeleteService(name string) error
-	GetService(name string) (string, error)
+	CreateService(service *coreV1.Service, namespace string) (string, error)
+	ListService(limit int64, namespace string) (*[]string, error)
+	UpdateService(service *coreV1.Service, namespace string) error
+	DeleteService(name string, namespace string) error
+	GetService(name string, namespace string) (string, error)
 }
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
@@ -135,7 +135,7 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-	// kubeData.Deployment.Namespace = "test"
+	kubeData.Deployment.Namespace = resource.Namespace
 	kubeData.Deployment.Name = uuidDeploymentName
 
 	if kubeData.Service == nil {
@@ -143,19 +143,19 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-	// kubeData.Service.Namespace = "test"
+	kubeData.Service.Namespace = resource.Namespace
 	kubeData.Service.Name = uuidServiceName
 
 	// krd.AddNetworkAnnotationsToPod(kubeData, resource.Networks)
 
-	_, err = s.Client.CreateDeployment(kubeData.Deployment)
+	_, err = s.Client.CreateDeployment(kubeData.Deployment, resource.Namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_, err = s.Client.CreateService(kubeData.Service)
+	_, err = s.Client.CreateService(kubeData.Service, resource.Namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF service error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -181,7 +181,8 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 func (s *VNFInstanceService) ListHandler(w http.ResponseWriter, r *http.Request) {
 	limit := int64(10) // TODO (electrocucaracha): export this as configuration value
 
-	deployments, err := s.Client.ListDeployment(limit)
+	deployments, err := s.Client.ListDeployment(limit, "")
+	// TODO: deployments, err := s.Client.ListDeployment(limit, resource.Namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF list error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -211,14 +212,14 @@ func (s *VNFInstanceService) ListHandler(w http.ResponseWriter, r *http.Request)
 func (s *VNFInstanceService) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	err := s.Client.DeleteDeployment(vars["vnfInstanceId"])
+	err := s.Client.DeleteDeployment(vars["vnfInstanceId"], vars["namespace"])
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = s.Client.DeleteService(vars["vnfInstanceId"])
+	err = s.Client.DeleteService(vars["vnfInstanceId"], vars["namespace"])
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -252,7 +253,6 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// utils.CSAR = &utils.CSARFile{}
 	kubeData, err := utils.ReadCSARFromFileSystem(resource.CsarID)
 
 	if kubeData.Deployment == nil {
@@ -268,7 +268,7 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = s.Client.UpdateDeployment(kubeData.Deployment)
+	err = s.Client.UpdateDeployment(kubeData.Deployment, resource.Namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Update VNF error")
 
@@ -294,7 +294,7 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 func (s *VNFInstanceService) GetHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	name, err := s.Client.GetDeployment(vars["vnfInstanceId"])
+	name, err := s.Client.GetDeployment(vars["vnfInstanceId"], vars["namespace"])
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
