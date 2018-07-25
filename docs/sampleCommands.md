@@ -8,6 +8,7 @@
     {
 	    "cloud_region_id": "region1",
 	    "csar_id": "uuid",
+        "namespace": "test",
 	    "oof_parameters": [{
 		    "key1": "value1",
 		    "key2": "value2",

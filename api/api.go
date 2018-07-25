@@ -32,6 +32,7 @@ func CheckInitialSettings() error {
 // NewRouter creates a router instance that serves the VNFInstance web methods
 func NewRouter(kubeconfig string) (s *mux.Router) {
 	service, err := NewVNFInstanceService(kubeconfig)
+
 	if err != nil {
 		log.Panic(pkgerrors.Wrap(err, "Creation of a service error"))
 	}
@@ -39,10 +40,10 @@ func NewRouter(kubeconfig string) (s *mux.Router) {
 
 	vnfInstanceHandler := router.PathPrefix("/v1/vnf_instances").Subrouter()
 	vnfInstanceHandler.HandleFunc("/", service.CreateHandler).Methods("POST").Name("VNFCreation")
-	vnfInstanceHandler.HandleFunc("/", service.ListHandler).Methods("GET")
-	vnfInstanceHandler.HandleFunc("/{vnfInstanceId}", service.DeleteHandler).Methods("DELETE")
+	vnfInstanceHandler.HandleFunc("/{namespace}", service.ListHandler).Methods("GET")
+	vnfInstanceHandler.HandleFunc("/{namespace}/{vnfInstanceId}", service.DeleteHandler).Methods("DELETE")
 	vnfInstanceHandler.HandleFunc("/{vnfInstanceId}", service.UpdateHandler).Methods("PUT")
-	vnfInstanceHandler.HandleFunc("/{vnfInstanceId}", service.GetHandler).Methods("GET")
+	vnfInstanceHandler.HandleFunc("/{namespace}/{vnfInstanceId}", service.GetHandler).Methods("GET")
 
 	return router
 }

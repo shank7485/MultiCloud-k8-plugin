@@ -28,81 +28,111 @@ import (
 )
 
 type mockClient struct {
-	create func() (string, error)
-	list   func() (*[]string, error)
-	delete func() error
-	update func() error
-	get    func() (string, error)
+	create          func() (string, error)
+	list            func() (*[]string, error)
+	delete          func() error
+	update          func() error
+	get             func() (string, error)
+	createNamespace func() error
+	checkNamespace  func() (bool, error)
+	deleteNamespace func() error
 }
 
-func (c *mockClient) CreateDeployment(deployment *appsV1.Deployment) (string, error) {
+// Deployment mocks
+
+func (c *mockClient) CreateDeployment(deployment *appsV1.Deployment, namespace string) (string, error) {
 	if c.create != nil {
 		return c.create()
 	}
 	return "", nil
 }
 
-func (c *mockClient) ListDeployment(limit int64) (*[]string, error) {
+func (c *mockClient) ListDeployment(limit int64, namespace string) (*[]string, error) {
 	if c.list != nil {
 		return c.list()
 	}
 	return nil, nil
 }
 
-func (c *mockClient) DeleteDeployment(name string) error {
+func (c *mockClient) DeleteDeployment(name string, namespace string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) UpdateDeployment(deployment *appsV1.Deployment) error {
+func (c *mockClient) UpdateDeployment(deployment *appsV1.Deployment, namespace string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) GetDeployment(name string) (string, error) {
+func (c *mockClient) GetDeployment(name string, namespace string) (string, error) {
 	if c.get != nil {
 		return c.get()
 	}
 	return "", nil
 }
 
-func (c *mockClient) CreateService(service *coreV1.Service) (string, error) {
+// Service mocks
+
+func (c *mockClient) CreateService(service *coreV1.Service, namespace string) (string, error) {
 	if c.create != nil {
 		return c.create()
 	}
 	return "", nil
 }
 
-func (c *mockClient) ListService(limit int64) (*[]string, error) {
+func (c *mockClient) ListService(limit int64, namespace string) (*[]string, error) {
 	if c.list != nil {
 		return c.list()
 	}
 	return nil, nil
 }
 
-func (c *mockClient) DeleteService(name string) error {
+func (c *mockClient) DeleteService(name string, namespace string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) UpdateService(service *coreV1.Service) error {
+func (c *mockClient) UpdateService(service *coreV1.Service, namespace string) error {
 	if c.delete != nil {
 		return c.delete()
 	}
 	return nil
 }
 
-func (c *mockClient) GetService(name string) (string, error) {
+func (c *mockClient) GetService(name string, namespace string) (string, error) {
 	if c.get != nil {
 		return c.get()
 	}
 	return "", nil
+}
+
+// Namespace mocks
+
+func (c *mockClient) CreateNamespace(namespace string) error {
+	if c.createNamespace != nil {
+		return c.createNamespace()
+	}
+	return nil
+}
+
+func (c *mockClient) CheckNamespace(namespace string) (bool, error) {
+	if c.checkNamespace != nil {
+		return c.checkNamespace()
+	}
+	return true, nil
+}
+
+func (c *mockClient) DeleteNamespace(namespace string) error {
+	if c.deleteNamespace != nil {
+		return c.deleteNamespace()
+	}
+	return nil
 }
 
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
@@ -209,7 +239,7 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 		}
 		var result ListVnfsResponse
 
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test", nil)
 		client = &mockClient{
 			list: func() (*[]string, error) {
 				return &[]string{"test1", "test2"}, nil
@@ -227,7 +257,7 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 		}
 	})
 	t.Run("Get empty list", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test", nil)
 		client = &mockClient{}
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusNotFound, response.Code)
@@ -236,7 +266,7 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 
 func TestVNFInstanceDeletion(t *testing.T) {
 	t.Run("Succesful delete a VNF", func(t *testing.T) {
-		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/1", nil)
+		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/test/1", nil)
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusAccepted, response.Code)
 
@@ -314,7 +344,7 @@ func TestVNFInstanceRetrieval(t *testing.T) {
 
 	t.Run("Succesful get a VNF", func(t *testing.T) {
 		expected := `{"response":"Got Deployment:1"}` + "\n"
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/1", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test/1", nil)
 		client = &mockClient{
 			get: func() (string, error) {
 				return "1", nil

@@ -24,6 +24,19 @@ import (
 	coreV1Interface "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
+type mockAppsV1 struct {
+	appsV1Interface.AppsV1Interface
+
+	deployments func() *mockDeploymentClient
+}
+
+func (c *mockAppsV1) Deployments(namespace string) appsV1Interface.DeploymentInterface {
+	if c.deployments != nil {
+		return c.deployments()
+	}
+	return nil
+}
+
 type mockDeploymentClient struct {
 	appsV1Interface.DeploymentInterface
 
@@ -68,6 +81,19 @@ func (c *mockDeploymentClient) Get(name string, options metaV1.GetOptions) (*app
 		return c.get()
 	}
 	return nil, nil
+}
+
+type mockCoreV1 struct {
+	coreV1Interface.CoreV1Interface
+
+	services func() *mockServiceClient
+}
+
+func (c *mockCoreV1) Services(namespace string) coreV1Interface.ServiceInterface {
+	if c.services != nil {
+		return c.services()
+	}
+	return nil
 }
 
 type mockServiceClient struct {
@@ -132,21 +158,31 @@ func TestClientCreateMethod(t *testing.T) {
 		}
 
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
-			mockDeploy := &mockDeploymentClient{
-				create: func() (*appsV1.Deployment, error) {
-					return inputDeploy, nil
+			mockAppsv1 := &mockAppsV1{
+				deployments: func() *mockDeploymentClient {
+					mockDeploy := &mockDeploymentClient{
+						create: func() (*appsV1.Deployment, error) {
+							return inputDeploy, nil
+						},
+					}
+					return mockDeploy
 				},
 			}
-			mockService := &mockServiceClient{
-				create: func() (*coreV1.Service, error) {
-					return inputService, nil
+			mockCorev1 := &mockCoreV1{
+				services: func() *mockServiceClient {
+					mockService := &mockServiceClient{
+						create: func() (*coreV1.Service, error) {
+							return inputService, nil
+						},
+					}
+					return mockService
 				},
 			}
-			return mockDeploy, mockService, nil
+			return mockAppsv1, mockCorev1, nil
 		}
 
 		client, _ := NewClient("")
-		resultDeploy, err := client.CreateDeployment(inputDeploy)
+		resultDeploy, err := client.CreateDeployment(inputDeploy, "")
 		if err != nil {
 			t.Fatalf("TestClientCreateMethod Deployment returned an error (%s)", err)
 		}
@@ -154,7 +190,7 @@ func TestClientCreateMethod(t *testing.T) {
 			t.Fatalf("TestClientCreateMethod Deployment returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
 		}
 
-		resultService, err := client.CreateService(inputService)
+		resultService, err := client.CreateService(inputService, "")
 		if err != nil {
 			t.Fatalf("TestClientCreateMethod Service returned an error (%s)", err)
 		}
@@ -166,19 +202,19 @@ func TestClientCreateMethod(t *testing.T) {
 
 func TestClientListMethod(t *testing.T) {
 	t.Run("Succesful list of all deployments and services", func(t *testing.T) {
-		expectedDeploy := &[]string{"testDeploy1", "testDeploy2"}
-		expectedService := &[]string{"testService1", "testService2"}
+		expectedDeploy := &[]string{"testdeploy1-aa-bb-cc-dd-ee", "testdeploy2-aa-bb-cc-dd-ee"}
+		expectedService := &[]string{"testService1-aa-bb-cc-dd-ee", "testService2-aa-bb-cc-dd-ee"}
 
 		inputDeploy := &appsV1.DeploymentList{
 			Items: []appsV1.Deployment{
 				appsV1.Deployment{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "testDeploy1",
+						Name: "testdeploy1-aa-bb-cc-dd-ee-deploy",
 					},
 				},
 				appsV1.Deployment{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "testDeploy2",
+						Name: "testdeploy2-aa-bb-cc-dd-ee-deploy",
 					},
 				},
 			},
@@ -187,31 +223,43 @@ func TestClientListMethod(t *testing.T) {
 			Items: []coreV1.Service{
 				coreV1.Service{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "testService1",
+						Name: "testService1-aa-bb-cc-dd-ee-service",
 					},
 				},
 				coreV1.Service{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "testService2",
+						Name: "testService2-aa-bb-cc-dd-ee-service",
 					},
 				},
 			},
 		}
+
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
-			mockDeploy := &mockDeploymentClient{
-				list: func() (*appsV1.DeploymentList, error) {
-					return inputDeploy, nil
+			mockAppsv1 := &mockAppsV1{
+				deployments: func() *mockDeploymentClient {
+					mockDeploy := &mockDeploymentClient{
+						list: func() (*appsV1.DeploymentList, error) {
+							return inputDeploy, nil
+						},
+					}
+					return mockDeploy
 				},
 			}
-			mockService := &mockServiceClient{
-				list: func() (*coreV1.ServiceList, error) {
-					return inputService, nil
+			mockCorev1 := &mockCoreV1{
+				services: func() *mockServiceClient {
+					mockService := &mockServiceClient{
+						list: func() (*coreV1.ServiceList, error) {
+							return inputService, nil
+						},
+					}
+					return mockService
 				},
 			}
-			return mockDeploy, mockService, nil
+
+			return mockAppsv1, mockCorev1, nil
 		}
 		client, _ := NewClient("")
-		resultDeploy, err := client.ListDeployment(10)
+		resultDeploy, err := client.ListDeployment(10, "")
 		if err != nil {
 			t.Fatalf("TestClientListMethod Deployment returned an error (%s)", err)
 		}
@@ -219,12 +267,12 @@ func TestClientListMethod(t *testing.T) {
 			t.Fatalf("TestClientListMethod Deployment returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
 		}
 
-		resultService, err := client.ListService(10)
+		resultService, err := client.ListService(10, "")
 		if err != nil {
 			t.Fatalf("TestClientListMethod Service returned an error (%s)", err)
 		}
 		if !reflect.DeepEqual(expectedService, resultService) {
-			t.Fatalf("TestClientListMethod Service returned:\n result=%v\n expected=%v", resultDeploy, expectedDeploy)
+			t.Fatalf("TestClientListMethod Service returned:\n result=%v\n expected=%v", resultService, expectedService)
 		}
 
 	})
@@ -232,26 +280,73 @@ func TestClientListMethod(t *testing.T) {
 
 func TestClientDeleteMethod(t *testing.T) {
 	t.Run("Succesful deployment and service deletion", func(t *testing.T) {
-		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
-			mockDeploy := &mockDeploymentClient{
-				delete: func() error {
-					return nil
+
+		inputDeploy := &appsV1.DeploymentList{
+			Items: []appsV1.Deployment{
+				appsV1.Deployment{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name: "testdeploy1-aa-bb-cc-dd-ee-deploy",
+					},
 				},
-			}
-			mockService := &mockServiceClient{
-				delete: func() error {
-					return nil
+				appsV1.Deployment{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name: "testdeploy2-aa-bb-cc-dd-ee-deploy",
+					},
 				},
-			}
-			return mockDeploy, mockService, nil
+			},
 		}
+		inputService := &coreV1.ServiceList{
+			Items: []coreV1.Service{
+				coreV1.Service{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name: "testService1-aa-bb-cc-dd-ee-service",
+					},
+				},
+				coreV1.Service{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name: "testService2-aa-bb-cc-dd-ee-service",
+					},
+				},
+			},
+		}
+
+		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
+			mockAppsv1 := &mockAppsV1{
+				deployments: func() *mockDeploymentClient {
+					mockDeploy := &mockDeploymentClient{
+						delete: func() error {
+							return nil
+						},
+						list: func() (*appsV1.DeploymentList, error) {
+							return inputDeploy, nil
+						},
+					}
+					return mockDeploy
+				},
+			}
+			mockCorev1 := &mockCoreV1{
+				services: func() *mockServiceClient {
+					mockService := &mockServiceClient{
+						delete: func() error {
+							return nil
+						},
+						list: func() (*coreV1.ServiceList, error) {
+							return inputService, nil
+						},
+					}
+					return mockService
+				},
+			}
+			return mockAppsv1, mockCorev1, nil
+		}
+
 		client, _ := NewClient("")
-		err := client.DeleteDeployment("test")
+		err := client.DeleteDeployment("test", "")
 		if err != nil {
 			t.Fatalf("TestClientDeleteMethod Deployment returned an error (%s)", err)
 		}
 
-		err = client.DeleteService("test")
+		err = client.DeleteService("test", "")
 		if err != nil {
 			t.Fatalf("TestClientDeleteMethod Service returned an error (%s)", err)
 		}
@@ -274,29 +369,39 @@ func TestClientUpdateMethod(t *testing.T) {
 		}
 
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
-			mockDeploy := &mockDeploymentClient{
-				update: func() (*appsV1.Deployment, error) {
-					return inputDeploy, nil
+			mockAppsv1 := &mockAppsV1{
+				deployments: func() *mockDeploymentClient {
+					mockDeploy := &mockDeploymentClient{
+						update: func() (*appsV1.Deployment, error) {
+							return inputDeploy, nil
+						},
+					}
+					return mockDeploy
 				},
 			}
-			mockService := &mockServiceClient{
-				update: func() (*coreV1.Service, error) {
-					return inputService, nil
+			mockCorev1 := &mockCoreV1{
+				services: func() *mockServiceClient {
+					mockService := &mockServiceClient{
+						update: func() (*coreV1.Service, error) {
+							return inputService, nil
+						},
+					}
+					return mockService
 				},
 			}
-			return mockDeploy, mockService, nil
+			return mockAppsv1, mockCorev1, nil
 		}
 
 		client, _ := NewClient("")
 		inputDeploy.SetName("New-sise-deploy")
 		inputService.SetName("New-sise-service")
 
-		err := client.UpdateDeployment(inputDeploy)
+		err := client.UpdateDeployment(inputDeploy, "")
 		if err != nil {
 			t.Fatalf("TestClientUpdateMethod Deployment returned an error (%s)", err)
 		}
 
-		err = client.UpdateService(inputService)
+		err = client.UpdateService(inputService, "")
 		if err != nil {
 			t.Fatalf("TestClientUpdateMethod Service returned an error (%s)", err)
 		}
@@ -305,33 +410,80 @@ func TestClientUpdateMethod(t *testing.T) {
 
 func TestClientGetMethod(t *testing.T) {
 	t.Run("Succesful get deployment and service", func(t *testing.T) {
-		expected := "test"
+		inputDeploy := &appsV1.DeploymentList{
+			Items: []appsV1.Deployment{
+				appsV1.Deployment{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name: "testVNF-aa-bb-cc-dd-ee-deploy1",
+					},
+				},
+				appsV1.Deployment{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name: "testVNF-aa-bb-cc-dd-ee-deploy2",
+					},
+				},
+			},
+		}
+		inputService := &coreV1.ServiceList{
+			Items: []coreV1.Service{
+				coreV1.Service{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name: "testVNF-aa-bb-cc-dd-ee-service1",
+					},
+				},
+				coreV1.Service{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name: "testVNF-aa-bb-cc-dd-ee-service2",
+					},
+				},
+			},
+		}
+
 		outputDeploy := &appsV1.Deployment{
 			ObjectMeta: metaV1.ObjectMeta{
-				Name: expected,
+				Name: "testVNF-aa-bb-cc-dd-ee-deploy1",
 			},
 		}
 		outputService := &coreV1.Service{
 			ObjectMeta: metaV1.ObjectMeta{
-				Name: expected,
+				Name: "testVNF-aa-bb-cc-dd-ee-service1",
 			},
 		}
 
 		GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientServiceInterface, error) {
-			mockDeploy := &mockDeploymentClient{
-				get: func() (*appsV1.Deployment, error) {
-					return outputDeploy, nil
+			mockAppsv1 := &mockAppsV1{
+				deployments: func() *mockDeploymentClient {
+					mockDeploy := &mockDeploymentClient{
+						list: func() (*appsV1.DeploymentList, error) {
+							return inputDeploy, nil
+						},
+						get: func() (*appsV1.Deployment, error) {
+							return outputDeploy, nil
+						},
+					}
+					return mockDeploy
 				},
 			}
-			mockService := &mockServiceClient{
-				get: func() (*coreV1.Service, error) {
-					return outputService, nil
+			mockCorev1 := &mockCoreV1{
+				services: func() *mockServiceClient {
+					mockService := &mockServiceClient{
+						list: func() (*coreV1.ServiceList, error) {
+							return inputService, nil
+						},
+						get: func() (*coreV1.Service, error) {
+							return outputService, nil
+						},
+					}
+					return mockService
 				},
 			}
-			return mockDeploy, mockService, nil
+			return mockAppsv1, mockCorev1, nil
 		}
+
 		client, _ := NewClient("")
-		result, err := client.GetDeployment(expected)
+		expected := "testVNF-aa-bb-cc-dd-ee"
+
+		result, err := client.GetDeployment("testVNF-aa-bb-cc-dd-ee", "")
 		if err != nil {
 			t.Fatalf("TestClientGetMethod Deployment returned an error (%s)", err)
 		}
@@ -339,7 +491,7 @@ func TestClientGetMethod(t *testing.T) {
 			t.Fatalf("TestClientGetMethod Deployment returned:\n result=%v\n expected=%v", result, expected)
 		}
 
-		result, err = client.GetService(expected)
+		result, err = client.GetService("testVNF-aa-bb-cc-dd-ee", "")
 		if err != nil {
 			t.Fatalf("TestClientGetMethod Service returned an error (%s)", err)
 		}
