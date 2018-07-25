@@ -213,8 +213,6 @@ func (c *Client) GetDeployment(externalVNFID string, namespace string) (string, 
 		namespace = "default"
 	}
 
-	///
-
 	opts := metaV1.ListOptions{
 		Limit: 10,
 	}
@@ -281,7 +279,12 @@ func (c *Client) ListService(limit int64, namespace string) (*[]string, error) {
 	result := make([]string, 0, limit)
 	if list != nil {
 		for _, service := range list.Items {
-			result = append(result, service.Name)
+			stringSlice := strings.Split(service.Name, "-")[:6]
+			res := ""
+			for _, val := range stringSlice {
+				res += val + "-"
+			}
+			result = append(result, res[:len(res)-1])
 		}
 	}
 	return &result, nil
@@ -345,19 +348,44 @@ func (c *Client) DeleteService(externalVNFID string, namespace string) error {
 }
 
 // GetService existing service hosting in a specific Kubernetes Service
-func (c *Client) GetService(name string, namespace string) (string, error) {
+func (c *Client) GetService(externalVNFID string, namespace string) (string, error) {
 	if namespace == "" {
 		namespace = "default"
 	}
-	opts := metaV1.GetOptions{}
-	opts.APIVersion = APIVersion
-	opts.Kind = "Service"
 
-	service, err := c.serviceClient.Services(namespace).Get(name, opts)
-	if err != nil {
-		return "", pkgerrors.Wrap(err, "Get Service error")
+	opts := metaV1.ListOptions{
+		Limit: 10,
 	}
-	return service.Name, nil
+	opts.APIVersion = APIVersion
+	opts.Kind = "SErvice"
+
+	list, err := c.serviceClient.Services(namespace).List(opts)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Get Deployment error")
+	}
+
+	var serviceList []string
+
+	for _, service := range list.Items {
+		serviceList = append(serviceList, service.Name)
+	}
+
+	convertToExternalID := func(internalName string) string {
+		stringSlice := strings.Split(internalName, "-")[:6]
+		res := ""
+		for _, val := range stringSlice {
+			res += val + "-"
+		}
+		return res[:len(res)-1]
+	}
+
+	for _, service := range serviceList {
+		if externalVNFID == convertToExternalID(service) {
+			return externalVNFID, nil
+		}
+	}
+
+	return "", nil
 }
 
 // CreateNamespace is used to create a new Namespace

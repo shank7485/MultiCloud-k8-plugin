@@ -235,14 +235,14 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 
 	t.Run("Succesful get a list of VNF", func(t *testing.T) {
 		expected := &ListVnfsResponse{
-			VNFs: []string{"uuid-0227efb3-904a-11e8-91d7-f45c89c87dc1", "uuid-0227efb3-904a-11e8-91d7-f45c89c87dc1"},
+			VNFs: []string{"test1", "test2"},
 		}
 		var result ListVnfsResponse
 
 		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test", nil)
 		client = &mockClient{
 			list: func() (*[]string, error) {
-				return &[]string{"uuid-0227efb3-904a-11e8-91d7-f45c89c87dc1-test1", "uuid-0227efb3-904a-11e8-91d7-f45c89c87dc1-test2"}, nil
+				return &[]string{"test1", "test2"}, nil
 			},
 		}
 		response := executeRequest(req)
@@ -257,7 +257,7 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 		}
 	})
 	t.Run("Get empty list", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test", nil)
 		client = &mockClient{}
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusNotFound, response.Code)
@@ -266,7 +266,7 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 
 func TestVNFInstanceDeletion(t *testing.T) {
 	t.Run("Succesful delete a VNF", func(t *testing.T) {
-		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/1", nil)
+		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/test/1", nil)
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusAccepted, response.Code)
 
@@ -344,7 +344,7 @@ func TestVNFInstanceRetrieval(t *testing.T) {
 
 	t.Run("Succesful get a VNF", func(t *testing.T) {
 		expected := `{"response":"Got Deployment:1"}` + "\n"
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/1", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test/1", nil)
 		client = &mockClient{
 			get: func() (string, error) {
 				return "1", nil
