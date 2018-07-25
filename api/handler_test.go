@@ -28,12 +28,17 @@ import (
 )
 
 type mockClient struct {
-	create func() (string, error)
-	list   func() (*[]string, error)
-	delete func() error
-	update func() error
-	get    func() (string, error)
+	create          func() (string, error)
+	list            func() (*[]string, error)
+	delete          func() error
+	update          func() error
+	get             func() (string, error)
+	createNamespace func() error
+	checkNamespace  func() (bool, error)
+	deleteNamespace func() error
 }
+
+// Deployment mocks
 
 func (c *mockClient) CreateDeployment(deployment *appsV1.Deployment, namespace string) (string, error) {
 	if c.create != nil {
@@ -70,6 +75,8 @@ func (c *mockClient) GetDeployment(name string, namespace string) (string, error
 	return "", nil
 }
 
+// Service mocks
+
 func (c *mockClient) CreateService(service *coreV1.Service, namespace string) (string, error) {
 	if c.create != nil {
 		return c.create()
@@ -103,6 +110,29 @@ func (c *mockClient) GetService(name string, namespace string) (string, error) {
 		return c.get()
 	}
 	return "", nil
+}
+
+// Namespace mocks
+
+func (c *mockClient) CreateNamespace(namespace string) error {
+	if c.createNamespace != nil {
+		return c.createNamespace()
+	}
+	return nil
+}
+
+func (c *mockClient) CheckNamespace(namespace string) (bool, error) {
+	if c.checkNamespace != nil {
+		return c.checkNamespace()
+	}
+	return true, nil
+}
+
+func (c *mockClient) DeleteNamespace(namespace string) error {
+	if c.deleteNamespace != nil {
+		return c.deleteNamespace()
+	}
+	return nil
 }
 
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
@@ -205,14 +235,14 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 
 	t.Run("Succesful get a list of VNF", func(t *testing.T) {
 		expected := &ListVnfsResponse{
-			VNFs: []string{"test1", "test2"},
+			VNFs: []string{"uuid-0227efb3-904a-11e8-91d7-f45c89c87dc1", "uuid-0227efb3-904a-11e8-91d7-f45c89c87dc1"},
 		}
 		var result ListVnfsResponse
 
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test", nil)
 		client = &mockClient{
 			list: func() (*[]string, error) {
-				return &[]string{"test1", "test2"}, nil
+				return &[]string{"uuid-0227efb3-904a-11e8-91d7-f45c89c87dc1-test1", "uuid-0227efb3-904a-11e8-91d7-f45c89c87dc1-test2"}, nil
 			},
 		}
 		response := executeRequest(req)

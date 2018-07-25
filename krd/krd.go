@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	pkgerrors "github.com/pkg/errors"
 
@@ -57,6 +58,11 @@ type ClientDeploymentInterface interface {
 type ClientServiceInterface interface {
 	coreV1Interface.CoreV1Interface
 }
+
+// // ClientNamespaceInterface is for Namespace clients
+// type ClientNamespaceInterface interface {
+// 	coreV1Interface.NamespaceInterface
+// }
 
 // NewClient loads Kubernetes local configuration values into a client
 func NewClient(kubeconfigPath string) (*Client, error) {
@@ -129,27 +135,62 @@ func (c *Client) ListDeployment(limit int64, namespace string) (*[]string, error
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "Get Deployment list error")
 	}
+
 	result := make([]string, 0, limit)
 	if list != nil {
 		for _, deployment := range list.Items {
-			result = append(result, deployment.Name)
+			stringSlice := strings.Split(deployment.Name, "-")[:6]
+			res := ""
+			for _, val := range stringSlice {
+				res += val + "-"
+			}
+			result = append(result, res[:len(res)-1])
 		}
 	}
+
 	return &result, nil
 }
 
 // DeleteDeployment existing deployments hosting in a specific Kubernetes Deployment
-func (c *Client) DeleteDeployment(name string, namespace string) error {
+func (c *Client) DeleteDeployment(externalVNFID string, namespace string) error {
 	if namespace == "" {
 		namespace = "default"
 	}
-	deletePolicy := metaV1.DeletePropagationForeground
 
-	err := c.deploymentClient.Deployments(namespace).Delete(name, &metaV1.DeleteOptions{
-		PropagationPolicy: &deletePolicy,
-	})
+	opts := metaV1.ListOptions{
+		Limit: 10,
+	}
+	opts.APIVersion = APIVersion
+	opts.Kind = "Deployment"
+
+	list, err := c.deploymentClient.Deployments(namespace).List(opts)
 	if err != nil {
 		return pkgerrors.Wrap(err, "Delete Deployment error")
+	}
+
+	var deploymentList []string
+
+	for _, deployment := range list.Items {
+		deploymentList = append(deploymentList, deployment.Name)
+	}
+
+	var deleteList []string
+
+	for _, deployment := range deploymentList {
+		if strings.Contains(deployment, externalVNFID) {
+			deleteList = append(deleteList, deployment)
+		}
+	}
+
+	deletePolicy := metaV1.DeletePropagationForeground
+
+	for _, deployment := range deleteList {
+		err = c.deploymentClient.Deployments(namespace).Delete(deployment, &metaV1.DeleteOptions{
+			PropagationPolicy: &deletePolicy,
+		})
+		if err != nil {
+			return pkgerrors.Wrap(err, "Delete Deployment error")
+		}
 	}
 	return nil
 }
@@ -167,19 +208,46 @@ func (c *Client) UpdateDeployment(deployment *appsV1.Deployment, namespace strin
 }
 
 // GetDeployment existing deployment hosting in a specific Kubernetes Deployment
-func (c *Client) GetDeployment(name string, namespace string) (string, error) {
+func (c *Client) GetDeployment(externalVNFID string, namespace string) (string, error) {
 	if namespace == "" {
 		namespace = "default"
 	}
-	opts := metaV1.GetOptions{}
+
+	///
+
+	opts := metaV1.ListOptions{
+		Limit: 10,
+	}
 	opts.APIVersion = APIVersion
 	opts.Kind = "Deployment"
 
-	deployment, err := c.deploymentClient.Deployments(namespace).Get(name, opts)
+	list, err := c.deploymentClient.Deployments(namespace).List(opts)
 	if err != nil {
 		return "", pkgerrors.Wrap(err, "Get Deployment error")
 	}
-	return deployment.Name, nil
+
+	var deploymentList []string
+
+	for _, deployment := range list.Items {
+		deploymentList = append(deploymentList, deployment.Name)
+	}
+
+	convertToExternalID := func(internalName string) string {
+		stringSlice := strings.Split(internalName, "-")[:6]
+		res := ""
+		for _, val := range stringSlice {
+			res += val + "-"
+		}
+		return res[:len(res)-1]
+	}
+
+	for _, deployment := range deploymentList {
+		if externalVNFID == convertToExternalID(deployment) {
+			return externalVNFID, nil
+		}
+	}
+
+	return "", nil
 }
 
 // CreateService object in a specific Kubernetes Deployment
@@ -232,18 +300,47 @@ func (c *Client) UpdateService(service *coreV1.Service, namespace string) error 
 }
 
 // DeleteService deletes an existing Kubernetes service
-func (c *Client) DeleteService(name string, namespace string) error {
+func (c *Client) DeleteService(externalVNFID string, namespace string) error {
 	if namespace == "" {
 		namespace = "default"
 	}
-	deletePolicy := metaV1.DeletePropagationForeground
 
-	err := c.serviceClient.Services(namespace).Delete(name, &metaV1.DeleteOptions{
-		PropagationPolicy: &deletePolicy,
-	})
+	opts := metaV1.ListOptions{
+		Limit: 10,
+	}
+	opts.APIVersion = APIVersion
+	opts.Kind = "Service"
+
+	list, err := c.serviceClient.Services(namespace).List(opts)
 	if err != nil {
 		return pkgerrors.Wrap(err, "Delete Service error")
 	}
+
+	var serviceList []string
+
+	for _, service := range list.Items {
+		serviceList = append(serviceList, service.Name)
+	}
+
+	var deleteList []string
+
+	deletePolicy := metaV1.DeletePropagationForeground
+
+	for _, service := range serviceList {
+		if strings.Contains(service, externalVNFID) {
+			deleteList = append(deleteList, service)
+		}
+	}
+
+	for _, service := range deleteList {
+		err = c.serviceClient.Services(namespace).Delete(service, &metaV1.DeleteOptions{
+			PropagationPolicy: &deletePolicy,
+		})
+		if err != nil {
+			return pkgerrors.Wrap(err, "Delete Service error")
+		}
+	}
+
 	return nil
 }
 
@@ -261,6 +358,57 @@ func (c *Client) GetService(name string, namespace string) (string, error) {
 		return "", pkgerrors.Wrap(err, "Get Service error")
 	}
 	return service.Name, nil
+}
+
+// CreateNamespace is used to create a new Namespace
+func (c *Client) CreateNamespace(namespace string) error {
+	namespaceStruct := &coreV1.Namespace{
+		ObjectMeta: metaV1.ObjectMeta{
+			Name: namespace,
+		},
+	}
+
+	_, err := c.serviceClient.Namespaces().Create(namespaceStruct)
+	if err != nil {
+		return pkgerrors.Wrap(err, "Create Namespace error")
+	}
+	return nil
+}
+
+// CheckNamespace is used to check if a Namespace actually exists
+func (c *Client) CheckNamespace(namespace string) (bool, error) {
+	opts := metaV1.ListOptions{
+		Limit: int64(10),
+	}
+
+	list, err := c.serviceClient.Namespaces().List(opts)
+
+	if err != nil {
+		return false, pkgerrors.Wrap(err, "Get Namespace list error")
+	}
+
+	if list.Items != nil {
+		for _, obj := range list.Items {
+			if namespace == obj.ObjectMeta.Name {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+// DeleteNamespace is used to delete a namespace
+func (c *Client) DeleteNamespace(namespace string) error {
+	deletePolicy := metaV1.DeletePropagationForeground
+
+	err := c.serviceClient.Namespaces().Delete(namespace, &metaV1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
+	})
+
+	if err != nil {
+		return pkgerrors.Wrap(err, "Delete Namespace error")
+	}
+	return nil
 }
 
 // CSARParser is an interface to parse both Deployment and Services
