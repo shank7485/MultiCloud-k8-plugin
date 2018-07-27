@@ -5,6 +5,7 @@ src
 pkg
 bin
 target
+kubeconfig/config
 
 # Binaries for programs and plugins
 *.exe

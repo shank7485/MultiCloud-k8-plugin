@@ -96,7 +96,7 @@ func validateBody(body interface{}) error {
 }
 
 // CreateHandler is the POST method creates a new VNF instance resource.
-func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Request) {
+func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	var resource CreateVnfRequest
 
 	if r.Body == nil {
@@ -113,6 +113,14 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 	err = validateBody(resource)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	// (TODO): Read kubeconfig for specific Cloud Region from local file system 
+	// if present or download it from AAI
+	s, err := NewVNFInstanceService("../kubeconfig/config")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -202,9 +210,17 @@ func (s *VNFInstanceService) CreateHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // ListHandler the existing VNF instances created in a given Kubernetes cluster
-func (s *VNFInstanceService) ListHandler(w http.ResponseWriter, r *http.Request) {
+func ListHandler(w http.ResponseWriter, r *http.Request) {
 	limit := int64(10) // TODO (electrocucaracha): export this as configuration value
 	vars := mux.Vars(r)
+
+	// (TODO): Read kubeconfig for specific Cloud Region from local file system 
+	// if present or download it from AAI
+	s, err := NewVNFInstanceService("../kubeconfig/config")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	deployments, err := s.Client.ListDeployment(limit, vars["namespace"])
 	// TODO: deployments, err := s.Client.ListDeployment(limit, resource.Namespace)
@@ -234,13 +250,21 @@ func (s *VNFInstanceService) ListHandler(w http.ResponseWriter, r *http.Request)
 }
 
 // DeleteHandler method terminates an individual VNF instance.
-func (s *VNFInstanceService) DeleteHandler(w http.ResponseWriter, r *http.Request) {
+func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	externalVNFID := vars["vnfInstanceId"]
 	namespace := vars["namespace"]
 
-	err := s.Client.DeleteService(externalVNFID, namespace)
+	// (TODO): Read kubeconfig for specific Cloud Region from local file system 
+	// if present or download it from AAI
+	s, err := NewVNFInstanceService("../kubeconfig/config")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = s.Client.DeleteService(externalVNFID, namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -259,7 +283,7 @@ func (s *VNFInstanceService) DeleteHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // UpdateHandler method to update a VNF instance.
-func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Request) {
+func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["vnfInstanceId"]
 
@@ -297,6 +321,14 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// (TODO): Read kubeconfig for specific Cloud Region from local file system 
+	// if present or download it from AAI
+	s, err := NewVNFInstanceService("../kubeconfig/config")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	err = s.Client.UpdateDeployment(kubeData.Deployment, resource.Namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Update VNF error")
@@ -320,12 +352,19 @@ func (s *VNFInstanceService) UpdateHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // GetHandler retrieves information about a VNF instance by reading an individual VNF instance resource.
-func (s *VNFInstanceService) GetHandler(w http.ResponseWriter, r *http.Request) {
+func GetHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	externalVNFID := vars["vnfInstanceId"]
 	namespace := vars["namespace"]
 
+	// (TODO): Read kubeconfig for specific Cloud Region from local file system 
+	// if present or download it from AAI
+	s, err := NewVNFInstanceService("../kubeconfig/config")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	name, err := s.Client.GetDeployment(externalVNFID, namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF error")
