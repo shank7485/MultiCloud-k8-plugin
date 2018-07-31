@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 
 	pkgerrors "github.com/pkg/errors"
 
@@ -139,12 +138,7 @@ func (c *Client) ListDeployment(limit int64, namespace string) (*[]string, error
 	result := make([]string, 0, limit)
 	if list != nil {
 		for _, deployment := range list.Items {
-			stringSlice := strings.Split(deployment.Name, "-")[:6]
-			res := ""
-			for _, val := range stringSlice {
-				res += val + "-"
-			}
-			result = append(result, res[:len(res)-1])
+			result = append(result, deployment.Name)
 		}
 	}
 
@@ -152,46 +146,20 @@ func (c *Client) ListDeployment(limit int64, namespace string) (*[]string, error
 }
 
 // DeleteDeployment existing deployments hosting in a specific Kubernetes Deployment
-func (c *Client) DeleteDeployment(externalVNFID string, namespace string) error {
+func (c *Client) DeleteDeployment(internalVNFID string, namespace string) error {
 	if namespace == "" {
 		namespace = "default"
 	}
 
-	opts := metaV1.ListOptions{
-		Limit: 10,
-	}
-	opts.APIVersion = APIVersion
-	opts.Kind = "Deployment"
+	deletePolicy := metaV1.DeletePropagationForeground
+	err := c.deploymentClient.Deployments(namespace).Delete(internalVNFID, &metaV1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
+	})
 
-	list, err := c.deploymentClient.Deployments(namespace).List(opts)
 	if err != nil {
 		return pkgerrors.Wrap(err, "Delete Deployment error")
 	}
 
-	var deploymentList []string
-
-	for _, deployment := range list.Items {
-		deploymentList = append(deploymentList, deployment.Name)
-	}
-
-	var deleteList []string
-
-	for _, deployment := range deploymentList {
-		if strings.Contains(deployment, externalVNFID) {
-			deleteList = append(deleteList, deployment)
-		}
-	}
-
-	deletePolicy := metaV1.DeletePropagationForeground
-
-	for _, deployment := range deleteList {
-		err = c.deploymentClient.Deployments(namespace).Delete(deployment, &metaV1.DeleteOptions{
-			PropagationPolicy: &deletePolicy,
-		})
-		if err != nil {
-			return pkgerrors.Wrap(err, "Delete Deployment error")
-		}
-	}
 	return nil
 }
 
@@ -208,7 +176,7 @@ func (c *Client) UpdateDeployment(deployment *appsV1.Deployment, namespace strin
 }
 
 // GetDeployment existing deployment hosting in a specific Kubernetes Deployment
-func (c *Client) GetDeployment(externalVNFID string, namespace string) (string, error) {
+func (c *Client) GetDeployment(internalVNFID string, namespace string) (string, error) {
 	if namespace == "" {
 		namespace = "default"
 	}
@@ -224,27 +192,11 @@ func (c *Client) GetDeployment(externalVNFID string, namespace string) (string, 
 		return "", pkgerrors.Wrap(err, "Get Deployment error")
 	}
 
-	var deploymentList []string
-
 	for _, deployment := range list.Items {
-		deploymentList = append(deploymentList, deployment.Name)
-	}
-
-	convertToExternalID := func(internalName string) string {
-		stringSlice := strings.Split(internalName, "-")[:6]
-		res := ""
-		for _, val := range stringSlice {
-			res += val + "-"
-		}
-		return res[:len(res)-1]
-	}
-
-	for _, deployment := range deploymentList {
-		if externalVNFID == convertToExternalID(deployment) {
-			return externalVNFID, nil
+		if deployment.Name == internalVNFID {
+			return internalVNFID, nil
 		}
 	}
-
 	return "", nil
 }
 
@@ -279,12 +231,7 @@ func (c *Client) ListService(limit int64, namespace string) (*[]string, error) {
 	result := make([]string, 0, limit)
 	if list != nil {
 		for _, service := range list.Items {
-			stringSlice := strings.Split(service.Name, "-")[:6]
-			res := ""
-			for _, val := range stringSlice {
-				res += val + "-"
-			}
-			result = append(result, res[:len(res)-1])
+			result = append(result, service.Name)
 		}
 	}
 	return &result, nil
@@ -303,52 +250,24 @@ func (c *Client) UpdateService(service *coreV1.Service, namespace string) error 
 }
 
 // DeleteService deletes an existing Kubernetes service
-func (c *Client) DeleteService(externalVNFID string, namespace string) error {
+func (c *Client) DeleteService(internalVNFID string, namespace string) error {
 	if namespace == "" {
 		namespace = "default"
 	}
 
-	opts := metaV1.ListOptions{
-		Limit: 10,
-	}
-	opts.APIVersion = APIVersion
-	opts.Kind = "Service"
-
-	list, err := c.serviceClient.Services(namespace).List(opts)
+	deletePolicy := metaV1.DeletePropagationForeground
+	err := c.serviceClient.Services(namespace).Delete(internalVNFID, &metaV1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
+	})
 	if err != nil {
 		return pkgerrors.Wrap(err, "Delete Service error")
-	}
-
-	var serviceList []string
-
-	for _, service := range list.Items {
-		serviceList = append(serviceList, service.Name)
-	}
-
-	var deleteList []string
-
-	deletePolicy := metaV1.DeletePropagationForeground
-
-	for _, service := range serviceList {
-		if strings.Contains(service, externalVNFID) {
-			deleteList = append(deleteList, service)
-		}
-	}
-
-	for _, service := range deleteList {
-		err = c.serviceClient.Services(namespace).Delete(service, &metaV1.DeleteOptions{
-			PropagationPolicy: &deletePolicy,
-		})
-		if err != nil {
-			return pkgerrors.Wrap(err, "Delete Service error")
-		}
 	}
 
 	return nil
 }
 
 // GetService existing service hosting in a specific Kubernetes Service
-func (c *Client) GetService(externalVNFID string, namespace string) (string, error) {
+func (c *Client) GetService(internalVNFID string, namespace string) (string, error) {
 	if namespace == "" {
 		namespace = "default"
 	}
@@ -364,24 +283,9 @@ func (c *Client) GetService(externalVNFID string, namespace string) (string, err
 		return "", pkgerrors.Wrap(err, "Get Deployment error")
 	}
 
-	var serviceList []string
-
 	for _, service := range list.Items {
-		serviceList = append(serviceList, service.Name)
-	}
-
-	convertToExternalID := func(internalName string) string {
-		stringSlice := strings.Split(internalName, "-")[:6]
-		res := ""
-		for _, val := range stringSlice {
-			res += val + "-"
-		}
-		return res[:len(res)-1]
-	}
-
-	for _, service := range serviceList {
-		if externalVNFID == convertToExternalID(service) {
-			return externalVNFID, nil
+		if internalVNFID == service.Name {
+			return internalVNFID, nil
 		}
 	}
 

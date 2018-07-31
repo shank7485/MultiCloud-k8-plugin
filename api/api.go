@@ -14,16 +14,29 @@ limitations under the License.
 package api
 
 import (
-	"errors"
 	"github.com/gorilla/mux"
+	pkgerrors "github.com/pkg/errors"
 	"os"
+
+	"github.com/shank7485/k8-plugin-multicloud/db"
 )
 
 // CheckInitialSettings is used to check initial settings required to start api
 func CheckInitialSettings() error {
 	if os.Getenv("CSAR_DIR") == "" {
-		return errors.New("environment variable CSAR_DIR not set")
+		return pkgerrors.New("environment variable CSAR_DIR not set")
 	}
+
+	err := db.CreateDBClient("consul")
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
+	err = db.DBconn.InitializeDatabase()
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
 	return nil
 }
 

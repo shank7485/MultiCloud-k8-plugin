@@ -18,6 +18,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
@@ -26,9 +27,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
+	"github.com/shank7485/k8-plugin-multicloud/db"
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 	"github.com/shank7485/k8-plugin-multicloud/utils"
-	// "github.com/shank7485/k8-plugin-multicloud/db"
 )
 
 // VNFInstanceService communicates the actions to Kubernetes deployment
@@ -84,6 +85,10 @@ func validateBody(body interface{}) error {
 	switch b := body.(type) {
 	case CreateVnfRequest:
 		if b.CloudRegionID == "" || b.CsarID == "" {
+			werr := pkgerrors.Wrap(errors.New("Invalid/Missing Data in POST request"), "CreateVnfRequest bad request")
+			return werr
+		}
+		if strings.Contains(b.CsarID, ":") {
 			werr := pkgerrors.Wrap(errors.New("Invalid/Missing Data in POST request"), "CreateVnfRequest bad request")
 			return werr
 		}
@@ -181,8 +186,6 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// krd.AddNetworkAnnotationsToPod(kubeData, resource.Networks)
 
-	// database := db.JSONDatabase{}
-
 	_, err = s.Client.CreateDeployment(kubeData.Deployment, resource.Namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
@@ -193,6 +196,20 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = s.Client.CreateService(kubeData.Service, resource.Namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF service error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = db.DBconn.CreateEntry(resource.Namespace, externalVNFID, internalDeploymentName)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = db.DBconn.CreateEntry(resource.Namespace, externalVNFID, internalServiceName)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -214,19 +231,9 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 
 // ListHandler the existing VNF instances created in a given Kubernetes cluster
 func ListHandler(w http.ResponseWriter, r *http.Request) {
-	limit := int64(10) // TODO (electrocucaracha): export this as configuration value
 	vars := mux.Vars(r)
 
-	// (TODO): Read kubeconfig for specific Cloud Region from local file system
-	// if present or download it from AAI
-	s, err := NewVNFInstanceService("../kubeconfig/config")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	deployments, err := s.Client.ListDeployment(limit, vars["namespace"])
-	// TODO: deployments, err := s.Client.ListDeployment(limit, resource.Namespace)
+	deployments, err := db.DBconn.ReadAll(vars["namespace"])
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF list error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -237,8 +244,9 @@ func ListHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
 	resp := ListVnfsResponse{
-		VNFs: *deployments,
+		VNFs: deployments,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -267,14 +275,32 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.Client.DeleteService(externalVNFID, namespace)
+	internalID, found, err := db.DBconn.ReadEntry(namespace, externalVNFID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if found == false {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	err = s.Client.DeleteService(internalID, namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = s.Client.DeleteDeployment(externalVNFID, namespace)
+	err = s.Client.DeleteDeployment(internalID, namespace)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Delete VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = db.DBconn.DeleteEntry(namespace, externalVNFID)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -361,20 +387,9 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	externalVNFID := vars["vnfInstanceId"]
 	namespace := vars["namespace"]
 
-	// (TODO): Read kubeconfig for specific Cloud Region from local file system
-	// if present or download it from AAI
-	s, err := NewVNFInstanceService("../kubeconfig/config")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	name, err := s.Client.GetDeployment(externalVNFID, namespace)
-	if err != nil {
-		werr := pkgerrors.Wrap(err, "Get VNF error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-		return
-	}
-	if name == "" {
+	name, found, err := db.DBconn.ReadEntry(namespace, externalVNFID)
+
+	if found == false {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
