@@ -17,12 +17,14 @@ import (
 	"archive/zip"
 	"errors"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	pkgerrors "github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
@@ -161,31 +163,83 @@ var ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
 	kubeData := &krd.KubernetesData{}
 	var path string
 
-	path = os.Getenv("CSAR_DIR") + "/" + csarID + "/deployment.yaml" // Remove utils path
+	csarDirPath := os.Getenv("CSAR_DIR") + "/" + csarID
+	sequenceYAMLPath := csarDirPath + "/sequence.yaml"
 
-	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return nil, errors.New("File " + path + "does not exists")
-	}
-
-	log.Println("deployment file: " + path)
-	err = kubeData.ReadDeploymentYAML(path)
+	dlist, slist, err := ReadSequenceFile(sequenceYAMLPath)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("File " + sequenceYAMLPath + "does not exists")
 	}
 
-	path = os.Getenv("CSAR_DIR") + "/" + csarID + "/service.yaml" // Remove utils path
+	for _, name := range dlist {
+		path = csarDirPath + "/" + name
 
-	_, err = os.Stat(path)
-	if os.IsNotExist(err) {
-		return nil, errors.New("File " + path + " does not exists")
+		_, err = os.Stat(path)
+		if os.IsNotExist(err) {
+			return nil, errors.New("File " + path + "does not exists")
+		}
+
+		log.Println("Processing file: " + path)
+		err = kubeData.ReadDeploymentYAML(path)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
-	log.Println("service file: " + path)
-	err = kubeData.ReadServiceYAML(path)
-	if err != nil {
-		return nil, err
+	for _, name := range slist {
+		path = csarDirPath + "/" + name
+
+		_, err = os.Stat(path)
+		if os.IsNotExist(err) {
+			return nil, errors.New("File " + path + "does not exists")
+		}
+
+		log.Println("Processing file: " + path)
+		err = kubeData.ReadServiceYAML(path)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	return kubeData, nil
+}
+
+// FileOrder stores the sequence of execution
+type FileOrder struct {
+	Dlist []string `yaml:"deployment"`
+	SList []string `yaml:"service"`
+}
+
+// ReadSequenceFile reads the sequence yaml to return the order or reads
+func ReadSequenceFile(yamlFilePath string) ([]string, []string, error) {
+	var deploymentlist []string
+	var servicelist []string
+
+	var f FileOrder
+
+	if _, err := os.Stat(yamlFilePath); err == nil {
+		log.Println("Reading sequence YAML: " + yamlFilePath)
+		rawBytes, err := ioutil.ReadFile(yamlFilePath)
+		if err != nil {
+			return deploymentlist, servicelist, pkgerrors.Wrap(err, "Sequence YAML file read error")
+		}
+
+		err = yaml.Unmarshal(rawBytes, &f)
+		if err != nil {
+			return deploymentlist, servicelist, pkgerrors.Wrap(err, "Sequence YAML file read error")
+		}
+
+		for _, name := range f.Dlist {
+			deploymentlist = append(deploymentlist, name)
+		}
+
+		for _, name := range f.SList {
+			servicelist = append(servicelist, name)
+		}
+
+	}
+
+	return deploymentlist, servicelist, nil
 }

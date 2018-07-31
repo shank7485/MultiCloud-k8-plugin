@@ -28,6 +28,7 @@ import (
 
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 	"github.com/shank7485/k8-plugin-multicloud/utils"
+	// "github.com/shank7485/k8-plugin-multicloud/db"
 )
 
 // VNFInstanceService communicates the actions to Kubernetes deployment
@@ -116,7 +117,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// (TODO): Read kubeconfig for specific Cloud Region from local file system 
+	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	s, err := NewVNFInstanceService("../kubeconfig/config")
 	if err != nil {
@@ -180,6 +181,8 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// krd.AddNetworkAnnotationsToPod(kubeData, resource.Networks)
 
+	// database := db.JSONDatabase{}
+
 	_, err = s.Client.CreateDeployment(kubeData.Deployment, resource.Namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
@@ -214,7 +217,7 @@ func ListHandler(w http.ResponseWriter, r *http.Request) {
 	limit := int64(10) // TODO (electrocucaracha): export this as configuration value
 	vars := mux.Vars(r)
 
-	// (TODO): Read kubeconfig for specific Cloud Region from local file system 
+	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	s, err := NewVNFInstanceService("../kubeconfig/config")
 	if err != nil {
@@ -256,7 +259,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	externalVNFID := vars["vnfInstanceId"]
 	namespace := vars["namespace"]
 
-	// (TODO): Read kubeconfig for specific Cloud Region from local file system 
+	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	s, err := NewVNFInstanceService("../kubeconfig/config")
 	if err != nil {
@@ -321,7 +324,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// (TODO): Read kubeconfig for specific Cloud Region from local file system 
+	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	s, err := NewVNFInstanceService("../kubeconfig/config")
 	if err != nil {
@@ -358,7 +361,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	externalVNFID := vars["vnfInstanceId"]
 	namespace := vars["namespace"]
 
-	// (TODO): Read kubeconfig for specific Cloud Region from local file system 
+	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	s, err := NewVNFInstanceService("../kubeconfig/config")
 	if err != nil {
