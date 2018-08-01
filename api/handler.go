@@ -88,8 +88,8 @@ func validateBody(body interface{}) error {
 			werr := pkgerrors.Wrap(errors.New("Invalid/Missing Data in POST request"), "CreateVnfRequest bad request")
 			return werr
 		}
-		if strings.Contains(b.CsarID, ":") {
-			werr := pkgerrors.Wrap(errors.New("Invalid/Missing Data in POST request"), "CreateVnfRequest bad request")
+		if strings.Contains(b.CsarID, "|") {
+			werr := pkgerrors.Wrap(errors.New("Character \"|\" not allowed in CSAR ID"), "CreateVnfRequest bad request")
 			return werr
 		}
 	case UpdateVnfRequest:
