@@ -88,7 +88,7 @@ func (c *ConsulDB) ReadAll(namespace string) ([]string, error) {
 	pairs, _, err := kv.List("", nil)
 
 	if len(pairs) == 0 {
-		return []string{"No keys found."}, err
+		return []string{""}, err
 	}
 
 	var res []string
