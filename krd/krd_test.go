@@ -202,8 +202,8 @@ func TestClientCreateMethod(t *testing.T) {
 
 func TestClientListMethod(t *testing.T) {
 	t.Run("Succesful list of all deployments and services", func(t *testing.T) {
-		expectedDeploy := &[]string{"testdeploy1-aa-bb-cc-dd-ee", "testdeploy2-aa-bb-cc-dd-ee"}
-		expectedService := &[]string{"testService1-aa-bb-cc-dd-ee", "testService2-aa-bb-cc-dd-ee"}
+		expectedDeploy := &[]string{"testdeploy1-aa-bb-cc-dd-ee-deploy", "testdeploy2-aa-bb-cc-dd-ee-deploy"}
+		expectedService := &[]string{"testService1-aa-bb-cc-dd-ee-service", "testService2-aa-bb-cc-dd-ee-service"}
 
 		inputDeploy := &appsV1.DeploymentList{
 			Items: []appsV1.Deployment{
@@ -481,22 +481,23 @@ func TestClientGetMethod(t *testing.T) {
 		}
 
 		client, _ := NewClient("")
-		expected := "testVNF-aa-bb-cc-dd-ee"
+		expectedDeploy := "testVNF-aa-bb-cc-dd-ee-deploy1"
+		expectedService := "testVNF-aa-bb-cc-dd-ee-service1"
 
-		result, err := client.GetDeployment("testVNF-aa-bb-cc-dd-ee", "")
+		result, err := client.GetDeployment("testVNF-aa-bb-cc-dd-ee-deploy1", "")
 		if err != nil {
 			t.Fatalf("TestClientGetMethod Deployment returned an error (%s)", err)
 		}
-		if !reflect.DeepEqual(expected, result) {
-			t.Fatalf("TestClientGetMethod Deployment returned:\n result=%v\n expected=%v", result, expected)
+		if !reflect.DeepEqual(expectedDeploy, result) {
+			t.Fatalf("TestClientGetMethod Deployment returned:\n result=%v\n expected=%v", result, expectedDeploy)
 		}
 
-		result, err = client.GetService("testVNF-aa-bb-cc-dd-ee", "")
+		result, err = client.GetService("testVNF-aa-bb-cc-dd-ee-service1", "")
 		if err != nil {
 			t.Fatalf("TestClientGetMethod Service returned an error (%s)", err)
 		}
-		if !reflect.DeepEqual(expected, result) {
-			t.Fatalf("TestClientGetMethod Service returned:\n result=%v\n expected=%v", result, expected)
+		if !reflect.DeepEqual(expectedService, result) {
+			t.Fatalf("TestClientGetMethod Service returned:\n result=%v\n expected=%v", result, expectedService)
 		}
 
 	})

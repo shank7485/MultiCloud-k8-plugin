@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/shank7485/k8-plugin-multicloud/db"
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 	"github.com/shank7485/k8-plugin-multicloud/utils"
 	appsV1 "k8s.io/api/apps/v1"
@@ -135,6 +136,35 @@ func (c *mockClient) DeleteNamespace(namespace string) error {
 	return nil
 }
 
+type mockDB struct {
+	db.DatabaseConnection
+}
+
+func (c *mockDB) InitializeDatabase() error {
+	return nil
+}
+
+func (c *mockDB) CheckDatabase() error {
+	return nil
+}
+
+func (c *mockDB) CreateEntry(namespace string, externalID string, internalID string) error {
+	return nil
+}
+
+func (c *mockDB) ReadEntry(namespace string, externalID string) (string, bool, error) {
+	return "deployName|serviceName", true, nil
+}
+
+func (c *mockDB) DeleteEntry(namespace string, externalID string) error {
+	return nil
+}
+
+func (c *mockDB) ReadAll(namespace string) ([]string, error) {
+	returnVal := []string{"key1", "key2"}
+	return returnVal, nil
+}
+
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	router := NewRouter("")
 	recorder := httptest.NewRecorder()
@@ -188,6 +218,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 			}
 			return kubeData, nil
 		}
+		db.DBconn = &mockDB{}
 
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusCreated, response.Code)
@@ -235,14 +266,14 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 
 	t.Run("Succesful get a list of VNF", func(t *testing.T) {
 		expected := &ListVnfsResponse{
-			VNFs: []string{"test1", "test2"},
+			VNFs: []string{"key1", "key2"},
 		}
 		var result ListVnfsResponse
 
 		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test", nil)
 		client = &mockClient{
 			list: func() (*[]string, error) {
-				return &[]string{"test1", "test2"}, nil
+				return &[]string{"key1", "key2"}, nil
 			},
 		}
 		response := executeRequest(req)
@@ -260,13 +291,30 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test", nil)
 		client = &mockClient{}
 		response := executeRequest(req)
-		checkResponseCode(t, http.StatusNotFound, response.Code)
+		checkResponseCode(t, http.StatusOK, response.Code)
 	})
 }
 
 func TestVNFInstanceDeletion(t *testing.T) {
 	t.Run("Succesful delete a VNF", func(t *testing.T) {
 		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/test/1", nil)
+
+		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+			return &mockClient{
+				create: func() (string, error) {
+					return "vRouter_test", nil
+				},
+			}, nil
+		}
+		utils.ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
+			kubeData := &krd.KubernetesData{
+				Deployment: &appsV1.Deployment{},
+				Service:    &coreV1.Service{},
+			}
+			return kubeData, nil
+		}
+		db.DBconn = &mockDB{}
+
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusAccepted, response.Code)
 
@@ -343,11 +391,11 @@ func TestVNFInstanceRetrieval(t *testing.T) {
 	}
 
 	t.Run("Succesful get a VNF", func(t *testing.T) {
-		expected := `{"response":"Got Deployment:1"}` + "\n"
+		expected := `{"response":"Got Deployment:deployName|serviceName"}` + "\n"
 		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test/1", nil)
 		client = &mockClient{
 			get: func() (string, error) {
-				return "1", nil
+				return "deployName|serviceName", nil
 			},
 		}
 		response := executeRequest(req)
@@ -358,9 +406,9 @@ func TestVNFInstanceRetrieval(t *testing.T) {
 		}
 	})
 	t.Run("VNF not found", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/1", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test/1", nil)
 		client = &mockClient{}
 		response := executeRequest(req)
-		checkResponseCode(t, http.StatusNotFound, response.Code)
+		checkResponseCode(t, http.StatusOK, response.Code)
 	})
 }

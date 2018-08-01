@@ -200,7 +200,9 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.DBconn.CreateEntry(resource.Namespace, externalVNFID, internalDeploymentName)
+	internalID := internalDeploymentName + "|" + internalServiceName
+
+	err = db.DBconn.CreateEntry(resource.Namespace, externalVNFID, internalID)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -286,14 +288,17 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.Client.DeleteService(internalID, namespace)
+	internalDeploymentName := strings.Split(internalID, "|")[0]
+	internalServiceName := strings.Split(internalID, "|")[1]
+
+	err = s.Client.DeleteService(internalServiceName, namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = s.Client.DeleteDeployment(internalID, namespace)
+	err = s.Client.DeleteDeployment(internalDeploymentName, namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
