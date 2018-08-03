@@ -11,9 +11,9 @@ var DBconn DatabaseConnection
 type DatabaseConnection interface {
 	InitializeDatabase() error
 	CheckDatabase() error
-	CreateEntry(string, string, string) error
-	ReadEntry(string, string) (string, bool, error)
-	DeleteEntry(string, string) error
+	CreateEntry(string, string) error
+	ReadEntry(string) (string, bool, error)
+	DeleteEntry(string) error
 	ReadAll(string) ([]string, error)
 }
 

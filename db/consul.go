@@ -38,11 +38,10 @@ func (c *ConsulDB) CheckDatabase() error {
 }
 
 // CreateEntry is used to create a DB entry
-func (c *ConsulDB) CreateEntry(namespace string, externalID string, internalID string) error {
-	externalID = namespace + "/" + externalID
+func (c *ConsulDB) CreateEntry(key string, value string) error {
 	kv := c.consulClient.KV()
 
-	p := &consulapi.KVPair{Key: externalID, Value: []byte(internalID)}
+	p := &consulapi.KVPair{Key: key, Value: []byte(value)}
 
 	_, err := kv.Put(p, nil)
 
@@ -54,25 +53,24 @@ func (c *ConsulDB) CreateEntry(namespace string, externalID string, internalID s
 }
 
 // ReadEntry returns the internalID for a particular externalID is present in a namespace
-func (c *ConsulDB) ReadEntry(namespace string, externalID string) (string, bool, error) {
-	externalID = namespace + "/" + externalID
+func (c *ConsulDB) ReadEntry(key string) (string, bool, error) {
 
 	kv := c.consulClient.KV()
 
-	pair, _, err := kv.Get(externalID, nil)
+	pair, _, err := kv.Get(key, nil)
 
 	if pair == nil {
-		return string("No value found for ID: " + externalID), false, err
+		return string("No value found for ID: " + key), false, err
 	}
 	return string(pair.Value), true, err
 }
 
 // DeleteEntry is used to delete an ID
-func (c *ConsulDB) DeleteEntry(namespace string, externalID string) error {
-	externalID = namespace + "/" + externalID
+func (c *ConsulDB) DeleteEntry(key string) error {
+
 	kv := c.consulClient.KV()
 
-	_, err := kv.Delete(externalID, nil)
+	_, err := kv.Delete(key, nil)
 
 	if err != nil {
 		return err
@@ -82,10 +80,10 @@ func (c *ConsulDB) DeleteEntry(namespace string, externalID string) error {
 }
 
 // ReadAll is used to get all ExternalIDs in a namespace
-func (c *ConsulDB) ReadAll(namespace string) ([]string, error) {
+func (c *ConsulDB) ReadAll(prefix string) ([]string, error) {
 	kv := c.consulClient.KV()
 
-	pairs, _, err := kv.List("", nil)
+	pairs, _, err := kv.List(prefix, nil)
 
 	if len(pairs) == 0 {
 		return []string{""}, err

@@ -148,19 +148,19 @@ func (c *mockDB) CheckDatabase() error {
 	return nil
 }
 
-func (c *mockDB) CreateEntry(namespace string, externalID string, internalID string) error {
+func (c *mockDB) CreateEntry(key string, value string) error {
 	return nil
 }
 
-func (c *mockDB) ReadEntry(namespace string, externalID string) (string, bool, error) {
+func (c *mockDB) ReadEntry(key string) (string, bool, error) {
 	return "deployName|serviceName", true, nil
 }
 
-func (c *mockDB) DeleteEntry(namespace string, externalID string) error {
+func (c *mockDB) DeleteEntry(key string) error {
 	return nil
 }
 
-func (c *mockDB) ReadAll(namespace string) ([]string, error) {
+func (c *mockDB) ReadAll(key string) ([]string, error) {
 	returnVal := []string{"key1", "key2"}
 	return returnVal, nil
 }
@@ -183,6 +183,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 	t.Run("Succesful create a VNF", func(t *testing.T) {
 		payload := []byte(`{
 			"cloud_region_id": "region1",
+			"namespace": "test",
 			"csar_id": "UUID-1",
 			"oof_parameters": [{
 				"key1": "value1",
@@ -242,7 +243,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 	})
 	t.Run("Missing parameter failure", func(t *testing.T) {
 		payload := []byte(`{
-			"csar_url": "https://raw.githubusercontent.com/kubernetes/website/master/content/en/docs/concepts/workloads/controllers/nginx-deployment.yaml",
+			"csar_id": "testID",
 			"oof_parameters": {
 				"key_values": {
 					"key1": "value1",
@@ -270,7 +271,7 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 		}
 		var result ListVnfsResponse
 
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace", nil)
 		client = &mockClient{
 			list: func() (*[]string, error) {
 				return &[]string{"key1", "key2"}, nil
@@ -288,7 +289,7 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 		}
 	})
 	t.Run("Get empty list", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace", nil)
 		client = &mockClient{}
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusOK, response.Code)
@@ -297,7 +298,7 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 
 func TestVNFInstanceDeletion(t *testing.T) {
 	t.Run("Succesful delete a VNF", func(t *testing.T) {
-		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/test/1", nil)
+		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/cloudregion1/testnamespace/1", nil)
 
 		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
 			return &mockClient{
@@ -392,7 +393,7 @@ func TestVNFInstanceRetrieval(t *testing.T) {
 
 	t.Run("Succesful get a VNF", func(t *testing.T) {
 		expected := `{"response":"Got Deployment:deployName|serviceName"}` + "\n"
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test/1", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace/1", nil)
 		client = &mockClient{
 			get: func() (string, error) {
 				return "deployName|serviceName", nil
@@ -406,7 +407,7 @@ func TestVNFInstanceRetrieval(t *testing.T) {
 		}
 	})
 	t.Run("VNF not found", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/test/1", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace/1", nil)
 		client = &mockClient{}
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusOK, response.Code)

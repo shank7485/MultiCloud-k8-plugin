@@ -18,6 +18,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -88,7 +89,7 @@ func validateBody(body interface{}) error {
 			werr := pkgerrors.Wrap(errors.New("Invalid/Missing Data in POST request"), "CreateVnfRequest bad request")
 			return werr
 		}
-		if strings.Contains(b.CsarID, "|") {
+		if strings.Contains(b.CloudRegionID, "|") || strings.Contains(b.Namespace, "|") {
 			werr := pkgerrors.Wrap(errors.New("Character \"|\" not allowed in CSAR ID"), "CreateVnfRequest bad request")
 			return werr
 		}
@@ -124,7 +125,8 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
-	s, err := NewVNFInstanceService("../kubeconfig/config")
+	// err := DownloadKubeConfigFromAAI(resource.CloudRegionID, os.Getenv("KUBE_CONFIG_DIR")
+	s, err := NewVNFInstanceService(os.Getenv("KUBE_CONFIG_DIR" + "/" + resource.CloudRegionID))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -161,17 +163,22 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Not using "_" since only "." and "-" are allowed for deployment names.
-	id := string(uuid.NewUUID())
+	// uuid
+	externalVNFID := string(uuid.NewUUID())
 
-	externalVNFID := resource.CsarID + "-" + id
-	yamlName := kubeData.Deployment.Name
+	// cloud1-default-uuid
+	internalVNFID := resource.CloudRegionID + "-" + resource.Namespace + "-" + externalVNFID
 
-	internalDeploymentName := externalVNFID + "-" + kubeData.Deployment.Name
-	internalServiceName := externalVNFID + "-" + kubeData.Service.Name
+	// cloud1-default-uuid-sisedeploy
+	internalDeploymentName := internalVNFID + "-" + kubeData.Deployment.Name
+
+	// cloud1-default-uuid-sisesvc
+	internalServiceName := internalVNFID + "-" + kubeData.Service.Name
 
 	// Persist in AAI database.
-	log.Println("VNF ID: " + externalVNFID)
+	log.Printf("Cloud Region ID: %s, Namespace: %s, VNF ID: %s ", resource.CloudRegionID, resource.Namespace, externalVNFID)
+
+	yamlName := "Deployment: " + kubeData.Deployment.Name + " Service: " + kubeData.Service.Name
 
 	kubeData.Deployment.Namespace = resource.Namespace
 	kubeData.Deployment.Name = internalDeploymentName
@@ -200,16 +207,12 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	internalID := internalDeploymentName + "|" + internalServiceName
+	// cloud1-default-uuid-sisedeploy|cloud1-default-uuid-sisesvc
+	internalCombinedID := internalDeploymentName + "|" + internalServiceName
 
-	err = db.DBconn.CreateEntry(resource.Namespace, externalVNFID, internalID)
-	if err != nil {
-		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = db.DBconn.CreateEntry(resource.Namespace, externalVNFID, internalServiceName)
+	// key: cloud1-default-uuid
+	// value: cloud1-default-uuid-sisedeploy|cloud1-default-uuid-sisesvc
+	err = db.DBconn.CreateEntry(internalVNFID, internalCombinedID)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -235,20 +238,25 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 func ListHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	deployments, err := db.DBconn.ReadAll(vars["namespace"])
+	cloudRegionID := vars["cloudRegionID"] // cloud1
+	namespace := vars["namespace"]         // default
+
+	prefix := cloudRegionID + "-" + namespace // cloud1-default
+
+	internalVNFIDs, err := db.DBconn.ReadAll(prefix)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF list error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if deployments == nil {
+	if internalVNFIDs == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	resp := ListVnfsResponse{
-		VNFs: deployments,
+		VNFs: internalVNFIDs,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -266,18 +274,23 @@ func ListHandler(w http.ResponseWriter, r *http.Request) {
 func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	externalVNFID := vars["vnfInstanceId"]
-	namespace := vars["namespace"]
+	cloudRegionID := vars["cloudRegionID"] // cloud1
+	namespace := vars["namespace"]         // default
+	externalVNFID := vars["externalVNFID"] // uuid
+
+	// cloud1-default-uuid
+	internalVNFID := cloudRegionID + "-" + namespace + "-" + externalVNFID
 
 	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
-	s, err := NewVNFInstanceService("../kubeconfig/config")
+	// err := DownloadKubeConfigFromAAI(resource.CloudRegionID, os.Getenv("KUBE_CONFIG_DIR")
+	s, err := NewVNFInstanceService(os.Getenv("KUBE_CONFIG_DIR" + "/" + cloudRegionID))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	internalID, found, err := db.DBconn.ReadEntry(namespace, externalVNFID)
+	internalCombinedID, found, err := db.DBconn.ReadEntry(internalVNFID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -288,8 +301,8 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	internalDeploymentName := strings.Split(internalID, "|")[0]
-	internalServiceName := strings.Split(internalID, "|")[1]
+	internalDeploymentName := strings.Split(internalCombinedID, "|")[0]
+	internalServiceName := strings.Split(internalCombinedID, "|")[1]
 
 	err = s.Client.DeleteService(internalServiceName, namespace)
 	if err != nil {
@@ -305,7 +318,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.DBconn.DeleteEntry(namespace, externalVNFID)
+	err = db.DBconn.DeleteEntry(internalVNFID)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -389,10 +402,14 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 func GetHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	externalVNFID := vars["vnfInstanceId"]
-	namespace := vars["namespace"]
+	cloudRegionID := vars["cloudRegionID"] // cloud1
+	namespace := vars["namespace"]         // default
+	externalVNFID := vars["externalVNFID"] // uuid
 
-	name, found, err := db.DBconn.ReadEntry(namespace, externalVNFID)
+	// cloud1-default-uuid
+	internalVNFID := cloudRegionID + "-" + namespace + "-" + externalVNFID
+
+	name, found, err := db.DBconn.ReadEntry(internalVNFID)
 
 	if found == false {
 		w.WriteHeader(http.StatusNotFound)

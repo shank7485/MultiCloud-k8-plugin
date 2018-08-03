@@ -27,7 +27,15 @@ func CheckInitialSettings() error {
 		return pkgerrors.New("environment variable CSAR_DIR not set")
 	}
 
-	err := db.CreateDBClient("consul")
+	if os.Getenv("KUBE_CONFIG_DIR") == "" {
+		return pkgerrors.New("enviromment variable KUBE_CONFIG_DIR not set")
+	}
+
+	if os.Getenv("DATABASE_TYPE") == "" {
+		return pkgerrors.New("enviromment variable DATABASE_TYPE not set")
+	}
+
+	err := db.CreateDBClient(os.Getenv("DATABASE_TYPE"))
 	if err != nil {
 		return pkgerrors.Cause(err)
 	}
@@ -46,10 +54,12 @@ func NewRouter(kubeconfig string) (s *mux.Router) {
 
 	vnfInstanceHandler := router.PathPrefix("/v1/vnf_instances").Subrouter()
 	vnfInstanceHandler.HandleFunc("/", CreateHandler).Methods("POST").Name("VNFCreation")
-	vnfInstanceHandler.HandleFunc("/{namespace}", ListHandler).Methods("GET")
-	vnfInstanceHandler.HandleFunc("/{namespace}/{vnfInstanceId}", DeleteHandler).Methods("DELETE")
+	vnfInstanceHandler.HandleFunc("/{cloudRegionID}/{namespace}", ListHandler).Methods("GET")
+	vnfInstanceHandler.HandleFunc("/{cloudRegionID}/{namespace}/{externalVNFID}", DeleteHandler).Methods("DELETE")
+	vnfInstanceHandler.HandleFunc("/{cloudRegionID}/{namespace}/{externalVNFID}", GetHandler).Methods("GET")
+
+	// (TODO): Fix update method
 	vnfInstanceHandler.HandleFunc("/{vnfInstanceId}", UpdateHandler).Methods("PUT")
-	vnfInstanceHandler.HandleFunc("/{namespace}/{vnfInstanceId}", GetHandler).Methods("GET")
 
 	return router
 }
