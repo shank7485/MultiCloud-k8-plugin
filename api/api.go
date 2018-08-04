@@ -14,16 +14,42 @@ limitations under the License.
 package api
 
 import (
-	"errors"
 	"github.com/gorilla/mux"
+	pkgerrors "github.com/pkg/errors"
 	"os"
+
+	"github.com/shank7485/k8-plugin-multicloud/db"
 )
 
 // CheckInitialSettings is used to check initial settings required to start api
 func CheckInitialSettings() error {
 	if os.Getenv("CSAR_DIR") == "" {
-		return errors.New("environment variable CSAR_DIR not set")
+		return pkgerrors.New("environment variable CSAR_DIR not set")
 	}
+
+	if os.Getenv("KUBE_CONFIG_DIR") == "" {
+		return pkgerrors.New("enviromment variable KUBE_CONFIG_DIR not set")
+	}
+
+	if os.Getenv("DATABASE_TYPE") == "" {
+		return pkgerrors.New("enviromment variable DATABASE_TYPE not set")
+	}
+
+	err := db.CreateDBClient(os.Getenv("DATABASE_TYPE"))
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
+	err = db.DBconn.InitializeDatabase()
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
+	err = db.DBconn.CheckDatabase()
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
 	return nil
 }
 
@@ -33,10 +59,12 @@ func NewRouter(kubeconfig string) (s *mux.Router) {
 
 	vnfInstanceHandler := router.PathPrefix("/v1/vnf_instances").Subrouter()
 	vnfInstanceHandler.HandleFunc("/", CreateHandler).Methods("POST").Name("VNFCreation")
-	vnfInstanceHandler.HandleFunc("/{namespace}", ListHandler).Methods("GET")
-	vnfInstanceHandler.HandleFunc("/{namespace}/{vnfInstanceId}", DeleteHandler).Methods("DELETE")
+	vnfInstanceHandler.HandleFunc("/{cloudRegionID}/{namespace}", ListHandler).Methods("GET")
+	vnfInstanceHandler.HandleFunc("/{cloudRegionID}/{namespace}/{externalVNFID}", DeleteHandler).Methods("DELETE")
+	vnfInstanceHandler.HandleFunc("/{cloudRegionID}/{namespace}/{externalVNFID}", GetHandler).Methods("GET")
+
+	// (TODO): Fix update method
 	vnfInstanceHandler.HandleFunc("/{vnfInstanceId}", UpdateHandler).Methods("PUT")
-	vnfInstanceHandler.HandleFunc("/{namespace}/{vnfInstanceId}", GetHandler).Methods("GET")
 
 	return router
 }
