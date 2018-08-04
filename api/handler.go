@@ -126,7 +126,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	// err := DownloadKubeConfigFromAAI(resource.CloudRegionID, os.Getenv("KUBE_CONFIG_DIR")
-	s, err := NewVNFInstanceService(os.Getenv("KUBE_CONFIG_DIR" + "/" + resource.CloudRegionID))
+	s, err := NewVNFInstanceService(os.Getenv("KUBE_CONFIG_DIR") + "/" + resource.CloudRegionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -284,7 +284,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	// err := DownloadKubeConfigFromAAI(resource.CloudRegionID, os.Getenv("KUBE_CONFIG_DIR")
-	s, err := NewVNFInstanceService(os.Getenv("KUBE_CONFIG_DIR" + "/" + cloudRegionID))
+	s, err := NewVNFInstanceService(os.Getenv("KUBE_CONFIG_DIR") + "/" + cloudRegionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
