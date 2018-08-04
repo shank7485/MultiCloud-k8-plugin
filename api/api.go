@@ -45,6 +45,11 @@ func CheckInitialSettings() error {
 		return pkgerrors.Cause(err)
 	}
 
+	err = db.DBconn.CheckDatabase()
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
 	return nil
 }
 
