@@ -255,6 +255,7 @@ func ListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: Remove prefix from Internal ID before sending back
 	resp := ListVnfsResponse{
 		VNFs: internalVNFIDs,
 	}
