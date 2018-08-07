@@ -250,14 +250,26 @@ func ListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if internalVNFIDs == nil {
+	if len(internalVNFIDs) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
+	var editedList []string
+
+	for _, id := range internalVNFIDs {
+		if len(id) > 0 {
+			editedList = append(editedList, strings.TrimPrefix(id, prefix)[1:])
+		}
+	}
+
+	if len(editedList) == 0 {
+		editedList = append(editedList, "")
+	}
+
 	// TODO: Remove prefix from Internal ID before sending back
 	resp := ListVnfsResponse{
-		VNFs: internalVNFIDs,
+		VNFs: editedList,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -407,8 +419,14 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	namespace := vars["namespace"]         // default
 	externalVNFID := vars["externalVNFID"] // uuid
 
+	//cloudregion1-testnamespace-1
+	//cloudregion1-testnamespace-1-deployName|cloudregion1-testnamespace-1-serviceName"
+
 	// cloud1-default-uuid
 	internalVNFID := cloudRegionID + "-" + namespace + "-" + externalVNFID
+
+	deployname := ""
+	servicename := ""
 
 	name, found, err := db.DBconn.ReadEntry(internalVNFID)
 
@@ -417,8 +435,16 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(name) > 0 {
+		deployname = strings.Split(name, "|")[0]
+		servicename = strings.Split(name, "|")[1]
+
+		deployname = strings.Split(deployname, internalVNFID)[1][1:]
+		servicename = strings.Split(servicename, internalVNFID)[1][1:]
+	}
+
 	resp := GeneralResponse{
-		Response: "Got Deployment:" + name,
+		Response: "Deployment name: " + deployname + " Service name: " + servicename,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -153,7 +153,7 @@ func (c *mockDB) CreateEntry(key string, value string) error {
 }
 
 func (c *mockDB) ReadEntry(key string) (string, bool, error) {
-	return "deployName|serviceName", true, nil
+	return "cloudregion1-testnamespace-1-deployName|cloudregion1-testnamespace-1-serviceName", true, nil
 }
 
 func (c *mockDB) DeleteEntry(key string) error {
@@ -161,7 +161,7 @@ func (c *mockDB) DeleteEntry(key string) error {
 }
 
 func (c *mockDB) ReadAll(key string) ([]string, error) {
-	returnVal := []string{"key1", "key2"}
+	returnVal := []string{"cloudregion1-testnamespace-key1", "cloudregion1-testnamespace-key2"}
 	return returnVal, nil
 }
 
@@ -260,11 +260,6 @@ func TestVNFInstanceCreation(t *testing.T) {
 }
 
 func TestVNFInstancesRetrieval(t *testing.T) {
-	var client *mockClient
-	GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
-		return client, nil
-	}
-
 	t.Run("Succesful get a list of VNF", func(t *testing.T) {
 		expected := &ListVnfsResponse{
 			VNFs: []string{"key1", "key2"},
@@ -272,11 +267,9 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 		var result ListVnfsResponse
 
 		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace", nil)
-		client = &mockClient{
-			list: func() (*[]string, error) {
-				return &[]string{"key1", "key2"}, nil
-			},
-		}
+
+		db.DBconn = &mockDB{}
+
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusOK, response.Code)
 
@@ -290,7 +283,7 @@ func TestVNFInstancesRetrieval(t *testing.T) {
 	})
 	t.Run("Get empty list", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace", nil)
-		client = &mockClient{}
+		db.DBconn = &mockDB{}
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusOK, response.Code)
 	})
@@ -392,13 +385,9 @@ func TestVNFInstanceRetrieval(t *testing.T) {
 	}
 
 	t.Run("Succesful get a VNF", func(t *testing.T) {
-		expected := `{"response":"Got Deployment:deployName|serviceName"}` + "\n"
+		expected := `{"response":"Deployment name: deployName Service name: serviceName"}` + "\n"
 		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace/1", nil)
-		client = &mockClient{
-			get: func() (string, error) {
-				return "deployName|serviceName", nil
-			},
-		}
+		db.DBconn = &mockDB{}
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusOK, response.Code)
 
