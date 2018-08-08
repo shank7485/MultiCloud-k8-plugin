@@ -13,3 +13,13 @@ Requirements:
 * Dep
 
 `go get github.com/shank7485/k8-plugin-multicloud/...`
+
+# Archietecture
+
+Create Virtual Network Function
+
+![Create VNF](https://raw.githubusercontent.com/shank7485/k8-plugin-multicloud/master/docs/create_vnf.png)
+
+Create Virtual Link
+
+![Create VL](https://raw.githubusercontent.com/shank7485/k8-plugin-multicloud/master/docs/create_vl.png)
