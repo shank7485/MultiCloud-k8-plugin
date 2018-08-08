@@ -199,7 +199,10 @@ func TestVNFInstanceCreation(t *testing.T) {
 			}
 		}`)
 		expected := &CreateVnfResponse{
-			Name: "vRouter_test",
+			VNFID:         "test_UUID",
+			CloudRegionID: "region1",
+			Namespace:     "test",
+			VNFComponents: []string{"vRouter_deployment", "vRouter_service"},
 		}
 		var result CreateVnfResponse
 
@@ -226,7 +229,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 
 		err := json.NewDecoder(response.Body).Decode(&result)
 		if err != nil {
-			t.Fatalf("TestVNFInstanceCreation returned:\n result=%v\n expected=%v", err, expected.Name)
+			t.Fatalf("TestVNFInstanceCreation returned:\n result=%v\n expected=%v", err, expected.VNFComponents)
 		}
 	})
 	t.Run("Missing body failure", func(t *testing.T) {
@@ -385,13 +388,25 @@ func TestVNFInstanceRetrieval(t *testing.T) {
 	}
 
 	t.Run("Succesful get a VNF", func(t *testing.T) {
-		expected := `{"response":"Deployment name: deployName Service name: serviceName"}` + "\n"
+		expected := GetVnfResponse{
+			VNFID:         "1",
+			CloudRegionID: "cloudregion1",
+			Namespace:     "testnamespace",
+			VNFComponents: []string{"deployName", "serviceName"},
+		}
 		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace/1", nil)
 		db.DBconn = &mockDB{}
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusOK, response.Code)
 
-		if result := response.Body.String(); result != expected {
+		var result GetVnfResponse
+
+		err := json.NewDecoder(response.Body).Decode(&result)
+		if err != nil {
+			t.Fatalf("TestVNFInstanceRetrieval returned:\n result=%v\n expected=%v", err, expected)
+		}
+
+		if !reflect.DeepEqual(expected, result) {
 			t.Fatalf("TestVNFInstanceRetrieval returned:\n result=%v\n expected=%v", result, expected)
 		}
 	})

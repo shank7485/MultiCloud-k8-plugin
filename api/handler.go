@@ -178,7 +178,8 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	// Persist in AAI database.
 	log.Printf("Cloud Region ID: %s, Namespace: %s, VNF ID: %s ", resource.CloudRegionID, resource.Namespace, externalVNFID)
 
-	yamlName := "Deployment: " + kubeData.Deployment.Name + " Service: " + kubeData.Service.Name
+	yamlDeploymentName := kubeData.Deployment.Name
+	yamlServiceName := kubeData.Service.Name
 
 	kubeData.Deployment.Namespace = resource.Namespace
 	kubeData.Deployment.Name = internalDeploymentName
@@ -219,9 +220,16 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var VNFcomponentList []string
+
+	// TODO: Change this
+	VNFcomponentList = append(VNFcomponentList, yamlDeploymentName, yamlServiceName)
+
 	resp := CreateVnfResponse{
-		DeploymentID: externalVNFID,
-		Name:         yamlName,
+		VNFID:         externalVNFID,
+		CloudRegionID: resource.CloudRegionID,
+		Namespace:     resource.Namespace,
+		VNFComponents: VNFcomponentList,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -236,6 +244,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 
 // ListHandler the existing VNF instances created in a given Kubernetes cluster
 func ListHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
 
 	cloudRegionID := vars["cloudRegionID"] // cloud1
@@ -255,6 +264,10 @@ func ListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: There is an edge case where if namespace is passed but is missing some characters
+	// trailing, it will print the result with those excluding characters. This is because of
+	// the way I am trimming the Prefix. This fix is needed.
+
 	var editedList []string
 
 	for _, id := range internalVNFIDs {
@@ -267,7 +280,6 @@ func ListHandler(w http.ResponseWriter, r *http.Request) {
 		editedList = append(editedList, "")
 	}
 
-	// TODO: Remove prefix from Internal ID before sending back
 	resp := ListVnfsResponse{
 		VNFs: editedList,
 	}
@@ -443,8 +455,16 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		servicename = strings.Split(servicename, internalVNFID)[1][1:]
 	}
 
-	resp := GeneralResponse{
-		Response: "Deployment name: " + deployname + " Service name: " + servicename,
+	var VNFcomponentList []string
+
+	// TODO: Change this
+	VNFcomponentList = append(VNFcomponentList, deployname, servicename)
+
+	resp := GetVnfResponse{
+		VNFID:         externalVNFID,
+		CloudRegionID: cloudRegionID,
+		Namespace:     namespace,
+		VNFComponents: VNFcomponentList,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
