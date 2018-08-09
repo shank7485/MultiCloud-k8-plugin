@@ -6,6 +6,11 @@ ARG HTTPS_PROXY=${HTTPS_PROXY}
 ENV http_proxy $HTTP_PROXY
 ENV https_proxy $HTTPS_PROXY
 
+ENV CSAR_DIR "/opt/csar"
+ENV KUBE_CONFIG_DIR "/opt/kubeconfig"
+ENV DATABASE_TYPE "consul"
+ENV DATABASE_IP "127.0.0.1"
+
 RUN apk update && apk add --no-cache bash
 
 EXPOSE 8081
