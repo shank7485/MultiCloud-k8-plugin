@@ -23,8 +23,6 @@ import (
 
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
-	appsV1 "k8s.io/api/apps/v1"
-	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
@@ -35,29 +33,7 @@ import (
 
 // VNFInstanceService communicates the actions to Kubernetes deployment
 type VNFInstanceService struct {
-	Client VNFInstanceClientInterface
-}
-
-// VNFInstanceClientInterface has methods to work with VNF Instance resources.
-// This interface's signatures matches the methods in the Client struct in krd
-// package. This is done so that we can use the Client inside the VNFInstanceService
-// above.
-type VNFInstanceClientInterface interface {
-	CreateDeployment(deployment *appsV1.Deployment, namespace string) (string, error)
-	ListDeployment(limit int64, namespace string) (*[]string, error)
-	UpdateDeployment(deployment *appsV1.Deployment, namespace string) error
-	DeleteDeployment(name string, namespace string) error
-	GetDeployment(name string, namespace string) (string, error)
-
-	CreateService(service *coreV1.Service, namespace string) (string, error)
-	ListService(limit int64, namespace string) (*[]string, error)
-	UpdateService(service *coreV1.Service, namespace string) error
-	DeleteService(name string, namespace string) error
-	GetService(name string, namespace string) (string, error)
-
-	CreateNamespace(namespace string) error
-	CheckNamespace(namespace string) (bool, error)
-	DeleteNamespace(namespace string) error
+	Client krd.VNFInstanceClientInterface
 }
 
 // NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
@@ -72,8 +48,8 @@ func NewVNFInstanceService(kubeConfigPath string) (*VNFInstanceService, error) {
 }
 
 // GetVNFClient retrieve the client used to communicate with a Kubernetes Cluster
-var GetVNFClient = func(kubeConfigPath string) (VNFInstanceClientInterface, error) {
-	var client VNFInstanceClientInterface
+var GetVNFClient = func(kubeConfigPath string) (krd.VNFInstanceClientInterface, error) {
+	var client krd.VNFInstanceClientInterface
 
 	client, err := krd.NewClient(kubeConfigPath)
 	if err != nil {

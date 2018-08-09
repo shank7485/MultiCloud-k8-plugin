@@ -208,7 +208,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
 
-		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+		GetVNFClient = func(configPath string) (krd.VNFInstanceClientInterface, error) {
 			return &mockClient{
 				create: func() (string, error) {
 					return "vRouter_test", nil
@@ -296,7 +296,7 @@ func TestVNFInstanceDeletion(t *testing.T) {
 	t.Run("Succesful delete a VNF", func(t *testing.T) {
 		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/cloudregion1/testnamespace/1", nil)
 
-		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+		GetVNFClient = func(configPath string) (krd.VNFInstanceClientInterface, error) {
 			return &mockClient{
 				create: func() (string, error) {
 					return "vRouter_test", nil
@@ -352,7 +352,7 @@ func TestVNFInstanceUpdate(t *testing.T) {
 
 		req, _ := http.NewRequest("PUT", "/v1/vnf_instances/1", bytes.NewBuffer(payload))
 
-		GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+		GetVNFClient = func(configPath string) (krd.VNFInstanceClientInterface, error) {
 			return &mockClient{
 				update: func() error {
 					return nil
@@ -383,7 +383,7 @@ func TestVNFInstanceUpdate(t *testing.T) {
 
 func TestVNFInstanceRetrieval(t *testing.T) {
 	var client *mockClient
-	GetVNFClient = func(configPath string) (VNFInstanceClientInterface, error) {
+	GetVNFClient = func(configPath string) (krd.VNFInstanceClientInterface, error) {
 		return client, nil
 	}
 

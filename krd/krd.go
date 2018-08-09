@@ -103,7 +103,27 @@ var GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientSe
 	return deploy, service, nil
 }
 
-// The following methods implement the interface VNFInstanceClientInterface.
+// VNFInstanceClientInterface has methods to work with VNF Instance resources.
+// This interface's signatures matches the methods in the Client struct in krd
+// package. This is done so that we can use the Client inside the VNFInstanceService
+// above.
+type VNFInstanceClientInterface interface {
+	CreateDeployment(deployment *appsV1.Deployment, namespace string) (string, error)
+	ListDeployment(limit int64, namespace string) (*[]string, error)
+	UpdateDeployment(deployment *appsV1.Deployment, namespace string) error
+	DeleteDeployment(name string, namespace string) error
+	GetDeployment(name string, namespace string) (string, error)
+
+	CreateService(service *coreV1.Service, namespace string) (string, error)
+	ListService(limit int64, namespace string) (*[]string, error)
+	UpdateService(service *coreV1.Service, namespace string) error
+	DeleteService(name string, namespace string) error
+	GetService(name string, namespace string) (string, error)
+
+	CreateNamespace(namespace string) error
+	CheckNamespace(namespace string) (bool, error)
+	DeleteNamespace(namespace string) error
+}
 
 // CreateDeployment object in a specific Kubernetes Deployment
 func (c *Client) CreateDeployment(deployment *appsV1.Deployment, namespace string) (string, error) {
