@@ -12,9 +12,14 @@ services:
       - DATABASE_IP=consul-svr
     depends_on:
       - "consul"
+    volumes:
+      - /opt/csar:/opt/csar
+      - /opt/kubeconfig:/opt/kubeconfig
   consul:
     image: consul
     hostname: consul-svr
     environment:
       - CONSUL_LOCAL_CONFIG={"datacenter":"us_west","server":true}
     command: ["agent", "-server", "-bootstrap-expect=3"]
+    volumes:
+      - /opt/consul/config:/consul/config
