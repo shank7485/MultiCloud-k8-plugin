@@ -168,7 +168,7 @@ var ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
 
 	dlist, slist, err := ReadSequenceFile(sequenceYAMLPath)
 	if err != nil {
-		return nil, errors.New("File " + sequenceYAMLPath + "does not exists")
+		return nil, errors.New("File " + sequenceYAMLPath + " does not exists")
 	}
 
 	for _, name := range dlist {
@@ -176,7 +176,7 @@ var ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
 
 		_, err = os.Stat(path)
 		if os.IsNotExist(err) {
-			return nil, errors.New("File " + path + "does not exists")
+			return nil, errors.New("File " + path + " does not exists")
 		}
 
 		log.Println("Processing file: " + path)
@@ -192,7 +192,7 @@ var ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
 
 		_, err = os.Stat(path)
 		if os.IsNotExist(err) {
-			return nil, errors.New("File " + path + "does not exists")
+			return nil, errors.New("File " + path + " does not exists")
 		}
 
 		log.Println("Processing file: " + path)
