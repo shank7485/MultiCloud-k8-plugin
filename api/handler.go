@@ -137,9 +137,9 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Kubernetes Identifies resources by names. The UID setting doesn't seem to the primary ID.
 	// deployment.UID = types.UID(resource.CsarID) + types.UID("_") + uuid
-	if kubeData.Deployment == nil {
-		werr := pkgerrors.Wrap(err, "Read kubeData.Deployment error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
+	if kubeData == nil || kubeData.Deployment == nil {
+		err := errors.New("Read kubeData.Deployment error")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
