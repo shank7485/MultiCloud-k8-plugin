@@ -121,7 +121,7 @@ type VNFInstanceClientInterface interface {
 	GetService(name string, namespace string) (string, error)
 
 	CreateNamespace(namespace string) error
-	CheckNamespace(namespace string) (bool, error)
+	IsNamespaceExists(namespace string) (bool, error)
 	DeleteNamespace(namespace string) error
 }
 
@@ -327,26 +327,13 @@ func (c *Client) CreateNamespace(namespace string) error {
 	return nil
 }
 
-// CheckNamespace is used to check if a Namespace actually exists
-func (c *Client) CheckNamespace(namespace string) (bool, error) {
-	opts := metaV1.ListOptions{
-		Limit: int64(10),
-	}
-
-	list, err := c.serviceClient.Namespaces().List(opts)
-
+// IsNamespaceExists is used to check if a given namespace actually exists in Kubernetes
+func (c *Client) IsNamespaceExists(namespace string) (bool, error) {
+	ns, err := c.serviceClient.Namespaces().Get(namespace, metaV1.GetOptions{})
 	if err != nil {
 		return false, pkgerrors.Wrap(err, "Get Namespace list error")
 	}
-
-	if list.Items != nil {
-		for _, obj := range list.Items {
-			if namespace == obj.ObjectMeta.Name {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
+	return ns != nil, nil
 }
 
 // DeleteNamespace is used to delete a namespace

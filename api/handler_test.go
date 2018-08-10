@@ -122,7 +122,7 @@ func (c *mockClient) CreateNamespace(namespace string) error {
 	return nil
 }
 
-func (c *mockClient) CheckNamespace(namespace string) (bool, error) {
+func (c *mockClient) IsNamespaceExists(namespace string) (bool, error) {
 	if c.checkNamespace != nil {
 		return c.checkNamespace()
 	}

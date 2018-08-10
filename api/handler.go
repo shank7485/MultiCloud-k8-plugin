@@ -61,8 +61,12 @@ var GetVNFClient = func(kubeConfigPath string) (krd.VNFInstanceClientInterface, 
 func validateBody(body interface{}) error {
 	switch b := body.(type) {
 	case CreateVnfRequest:
-		if b.CloudRegionID == "" || b.CsarID == "" {
-			werr := pkgerrors.Wrap(errors.New("Invalid/Missing Data in POST request"), "CreateVnfRequest bad request")
+		if b.CloudRegionID == "" {
+			werr := pkgerrors.Wrap(errors.New("Invalid/Missing CloudRegionID in POST request"), "CreateVnfRequest bad request")
+			return werr
+		}
+		if b.CsarID == "" {
+			werr := pkgerrors.Wrap(errors.New("Invalid/Missing CsarID in POST request"), "CreateVnfRequest bad request")
 			return werr
 		}
 		if strings.Contains(b.CloudRegionID, "|") || strings.Contains(b.Namespace, "|") {
@@ -108,7 +112,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	present, err := s.Client.CheckNamespace(resource.Namespace)
+	present, err := s.Client.IsNamespaceExists(resource.Namespace)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Check namespace exists error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -220,13 +224,11 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 
 // ListHandler the existing VNF instances created in a given Kubernetes cluster
 func ListHandler(w http.ResponseWriter, r *http.Request) {
-
 	vars := mux.Vars(r)
 
-	cloudRegionID := vars["cloudRegionID"] // cloud1
-	namespace := vars["namespace"]         // default
-
-	prefix := cloudRegionID + "-" + namespace // cloud1-default
+	cloudRegionID := vars["cloudRegionID"]
+	namespace := vars["namespace"]
+	prefix := cloudRegionID + "-" + namespace
 
 	internalVNFIDs, err := db.DBconn.ReadAll(prefix)
 	if err != nil {
