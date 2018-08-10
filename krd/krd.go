@@ -103,6 +103,18 @@ var GetKubeClient = func(configPath string) (ClientDeploymentInterface, ClientSe
 	return deploy, service, nil
 }
 
+/////////////////////////////////////////////////////////////////////////////////
+
+// KubeResourceClient has the signature methods to create Kubernetes reources
+type KubeResourceClient interface {
+	CreateResource(interface{}, string) (string, error)
+	ListResources(string) (*[]string, error)
+	DeleteResource(string, string) error
+	GetResource(string, string) (string, error)
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
 // VNFInstanceClientInterface has methods to work with VNF Instance resources.
 // This interface's signatures matches the methods in the Client struct in krd
 // package. This is done so that we can use the Client inside the VNFInstanceService
@@ -349,6 +361,16 @@ func (c *Client) DeleteNamespace(namespace string) error {
 	}
 	return nil
 }
+
+/////////////////////////////////////////////////////////////////////////////////
+
+// KubeResourceData is an interface to read and parse YAML
+type KubeResourceData interface {
+	ReadYAML(string) error
+	ParseYAML(string) error
+}
+
+/////////////////////////////////////////////////////////////////////////////////
 
 // CSARParser is an interface to parse both Deployment and Services
 // yaml files
