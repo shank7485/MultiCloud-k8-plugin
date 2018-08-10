@@ -15,7 +15,6 @@ package utils
 
 import (
 	"archive/zip"
-	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -166,80 +165,76 @@ var ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
 	csarDirPath := os.Getenv("CSAR_DIR") + "/" + csarID
 	sequenceYAMLPath := csarDirPath + "/sequence.yaml"
 
-	dlist, slist, err := ReadSequenceFile(sequenceYAMLPath)
+	seqFile, err := ReadSequenceFile(sequenceYAMLPath)
 	if err != nil {
-		return nil, errors.New("File " + sequenceYAMLPath + "does not exists")
+		return nil, pkgerrors.Wrap(err, "Error while reading Sequence File: "+sequenceYAMLPath)
 	}
 
-	for _, name := range dlist {
-		path = csarDirPath + "/" + name
+	for _, resource := range seqFile.ResourceTypePathMap {
+		for resourceName, resourceFileNames := range resource {
+			switch resourceName {
+			case "deployment":
+				// Load/Use Deployment data/client
+				for _, filename := range resourceFileNames {
+					path = csarDirPath + "/" + filename
 
-		_, err = os.Stat(path)
-		if os.IsNotExist(err) {
-			return nil, errors.New("File " + path + "does not exists")
+					_, err = os.Stat(path)
+					if os.IsNotExist(err) {
+						return nil, pkgerrors.New("File " + path + "does not exists")
+					}
+
+					log.Println("Processing file: " + path)
+					err = kubeData.ReadDeploymentYAML(path)
+					if err != nil {
+						return nil, err
+					}
+				}
+			case "service":
+				// Load/Use Service data/client
+				for _, filename := range resourceFileNames {
+					path = csarDirPath + "/" + filename
+
+					_, err = os.Stat(path)
+					if os.IsNotExist(err) {
+						return nil, pkgerrors.New("File " + path + "does not exists")
+					}
+
+					log.Println("Processing file: " + path)
+					err = kubeData.ReadServiceYAML(path)
+					if err != nil {
+						return nil, err
+					}
+				}
+			default:
+				return kubeData, pkgerrors.New(resourceName + " resource type not supported.")
+			}
 		}
-
-		log.Println("Processing file: " + path)
-		err = kubeData.ReadDeploymentYAML(path)
-		if err != nil {
-			return nil, err
-		}
-
 	}
-
-	for _, name := range slist {
-		path = csarDirPath + "/" + name
-
-		_, err = os.Stat(path)
-		if os.IsNotExist(err) {
-			return nil, errors.New("File " + path + "does not exists")
-		}
-
-		log.Println("Processing file: " + path)
-		err = kubeData.ReadServiceYAML(path)
-		if err != nil {
-			return nil, err
-		}
-
-	}
-
 	return kubeData, nil
 }
 
-// FileOrder stores the sequence of execution
-type FileOrder struct {
-	Dlist []string `yaml:"deployment"`
-	SList []string `yaml:"service"`
+// SequenceFile stores the sequence of execution
+type SequenceFile struct {
+	ResourceTypePathMap []map[string][]string `yaml:"resources"`
+	// Other plugins
 }
 
 // ReadSequenceFile reads the sequence yaml to return the order or reads
-func ReadSequenceFile(yamlFilePath string) ([]string, []string, error) {
-	var deploymentlist []string
-	var servicelist []string
-
-	var f FileOrder
+func ReadSequenceFile(yamlFilePath string) (SequenceFile, error) {
+	var seqFile SequenceFile
 
 	if _, err := os.Stat(yamlFilePath); err == nil {
 		log.Println("Reading sequence YAML: " + yamlFilePath)
 		rawBytes, err := ioutil.ReadFile(yamlFilePath)
 		if err != nil {
-			return deploymentlist, servicelist, pkgerrors.Wrap(err, "Sequence YAML file read error")
+			return seqFile, pkgerrors.Wrap(err, "Sequence YAML file read error")
 		}
 
-		err = yaml.Unmarshal(rawBytes, &f)
+		err = yaml.Unmarshal(rawBytes, &seqFile)
 		if err != nil {
-			return deploymentlist, servicelist, pkgerrors.Wrap(err, "Sequence YAML file read error")
+			return seqFile, pkgerrors.Wrap(err, "Sequence YAML file read error")
 		}
-
-		for _, name := range f.Dlist {
-			deploymentlist = append(deploymentlist, name)
-		}
-
-		for _, name := range f.SList {
-			servicelist = append(servicelist, name)
-		}
-
 	}
 
-	return deploymentlist, servicelist, nil
+	return seqFile, nil
 }
