@@ -28,7 +28,7 @@ import (
 
 	"github.com/shank7485/k8-plugin-multicloud/db"
 	"github.com/shank7485/k8-plugin-multicloud/krd"
-	"github.com/shank7485/k8-plugin-multicloud/utils"
+	"github.com/shank7485/k8-plugin-multicloud/csarParser"
 )
 
 // VNFInstanceService communicates the actions to Kubernetes deployment

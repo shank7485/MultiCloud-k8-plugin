@@ -23,7 +23,7 @@ import (
 
 	"github.com/shank7485/k8-plugin-multicloud/db"
 	"github.com/shank7485/k8-plugin-multicloud/krd"
-	"github.com/shank7485/k8-plugin-multicloud/utils"
+	"github.com/shank7485/k8-plugin-multicloud/csarParser"
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 )
