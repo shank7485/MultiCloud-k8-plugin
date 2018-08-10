@@ -5,6 +5,7 @@ ARG HTTPS_PROXY=${HTTPS_PROXY}
 
 ENV http_proxy $HTTP_PROXY
 ENV https_proxy $HTTPS_PROXY
+ENV no_proxy $NO_PROXY
 
 ENV CSAR_DIR "/opt/csar"
 ENV KUBE_CONFIG_DIR "/opt/kubeconfig"

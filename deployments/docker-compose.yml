@@ -3,6 +3,11 @@ version: '3'
 services:
   multicloud-k8s:
     image: nexus3.onap.org:10003/onap/multicloud/k8plugin
+    build:
+      context: ./
+      args:
+        - HTTP_PROXY=$HTTP_PROXY
+        - HTTPS_PROXY=$HTTPS_PROXY
     ports:
       - "8081:8081"
     environment:

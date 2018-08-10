@@ -6,6 +6,7 @@ pkg
 bin
 target
 kubeconfig/*
+deployments/k8plugin
 
 # Binaries for programs and plugins
 *.exe
