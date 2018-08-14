@@ -116,6 +116,8 @@ type KubeDeploymentData struct {
 	krd.KubeResourceData
 }
 
+var DeploymentData KubeDeploymentData
+
 // ReadYAML reads deployment.yaml and stores in KubeDeploymentData struct
 func (c *KubeDeploymentData) ReadYAML(yamlFilePath string) error {
 	if _, err := os.Stat(yamlFilePath); err == nil {

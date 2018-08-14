@@ -110,7 +110,10 @@ func (s *KubeServiceClient) GetResource(internalVNFID string, namespace string) 
 type KubeServiceData struct {
 	ServiceData []byte
 	Service     *coreV1.Service
+	krd.KubeResourceData
 }
+
+var ServiceData KubeServiceData
 
 // ReadYAML reads service.yaml and stores in KubeServiceData struct
 func (c *KubeServiceData) ReadYAML(yamlFilePath string) error {

@@ -11,212 +11,264 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package csarparser
 
 import (
-	"archive/zip"
-	"io"
+	"encoding/json"
+	"github.com/shank7485/k8-plugin-multicloud/plugins"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
-	"path/filepath"
 
 	pkgerrors "github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"k8s.io/apimachinery/pkg/util/uuid"
+
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
-// CSAR interface var used in handler
-var CSAR FileOperator
-
-// FileOperator is an interface to Download, Extract and Delete files
-type FileOperator interface {
-	Download(string, string) error
-	Unzip(string) error
-	Delete(string) error
-}
-
-// CSARFile is a concrete type to Download, Extract and Delete CSAR files
-type CSARFile struct{}
-
-// Download a CSAR file
-func (c *CSARFile) Download(destFileName string, url string) error {
-	file, err := os.Create(destFileName)
-	if err != nil {
-		return pkgerrors.Wrap(err, "CSAR file create error")
-	}
-
-	defer file.Close()
-	resp, err := http.Get(url)
-	if err != nil {
-		return pkgerrors.Wrap(err, "CSAR file download error")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return pkgerrors.Wrap(err, "CSAR file download error")
-	}
-	defer resp.Body.Close()
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return pkgerrors.Wrap(err, "CSAR file encode error")
-	}
-
-	return nil
-}
-
-// Unzip a CSAR file
-func (c *CSARFile) Unzip(filePath string) error {
-	reader, err := zip.OpenReader(filePath)
-	if err != nil {
-		return pkgerrors.Wrap(err, "CSAR file extracting error")
-	}
-
-	for _, file := range reader.File {
-		path := filepath.Join(file.Name)
-
-		if file.FileInfo().IsDir() {
-			os.MkdirAll(path, file.Mode())
-			continue
-		}
-
-		fileReader, err := file.Open()
-		if err != nil {
-			return pkgerrors.Wrap(err, "CSAR file extracting error")
-		}
-		defer fileReader.Close()
-
-		targetFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-		if err != nil {
-			return pkgerrors.Wrap(err, "CSAR file extracting error")
-		}
-		defer targetFile.Close()
-
-		_, err = io.Copy(targetFile, fileReader)
-		if err != nil {
-			return pkgerrors.Wrap(err, "CSAR file extracting error")
-		}
-	}
-	return nil
-}
-
-// Delete a CSAR file
-func (c *CSARFile) Delete(path string) error {
-	err := os.RemoveAll(path)
-	if err != nil {
-		return pkgerrors.Wrap(err, "CSAR file delete error")
-	}
-	return nil
-}
-
-// GetCSARFromURL to download the CSAR files from URL and extract it
-// to get deployment and service yamls
-// var GetCSARFromURL = func(csarID string, csarURL string) (*krd.KubernetesData, error) {
-
-// 	// 1. Download CSAR file
-// 	err := CSAR.Download("csar_file.zip", csarURL)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// 2. Unzip CSAR file which will contain a deployment folder containining
-// 	// deployment.yaml and service.yaml.
-// 	err = CSAR.Unzip("csar_file.zip")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	kubeData := &krd.KubernetesData{}
-
-// 	// 3. Read the deployment.yaml and service.yaml and set the deployment and
-// 	// service structs.
-// 	err = kubeData.ReadDeploymentYAML(csarID + "/deployment.yaml")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	err = kubeData.ReadServiceYAML(csarID + "/service.yaml")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// 4. Delete extracted directory.
-// 	err = CSAR.Delete(csarID)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// 5. Delete CSAR file.
-// 	err = CSAR.Delete("csar_file.zip")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// 6. Return kubeData struct for kubernetes client to spin things up.
-// 	return kubeData, nil
-// }
-
-// ReadCSARFromFileSystem reads the CSAR files from the files system
-var ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
-	kubeData := &krd.KubernetesData{}
+// CreateVNF reads the CSAR files from the files system and creates them one by one
+var CreateVNF = func(csarID string, cloudRegionID string, namespace string) (string, map[string][]string, error) {
 	var path string
+
+	// uuid
+	externalVNFID := string(uuid.NewUUID())
+
+	// cloud1-default-uuid
+	internalVNFID := cloudRegionID + "-" + namespace + "-" + externalVNFID
 
 	csarDirPath := os.Getenv("CSAR_DIR") + "/" + csarID
 	sequenceYAMLPath := csarDirPath + "/sequence.yaml"
 
 	seqFile, err := ReadSequenceFile(sequenceYAMLPath)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Error while reading Sequence File: "+sequenceYAMLPath)
+		return "", nil, pkgerrors.Wrap(err, "Error while reading Sequence File: "+sequenceYAMLPath)
 	}
+
+	var resourceYAMLNameMap map[string][]string
 
 	for _, resource := range seqFile.ResourceTypePathMap {
 		for resourceName, resourceFileNames := range resource {
 			switch resourceName {
 			case "deployment":
 				// Load/Use Deployment data/client
+				var deployNameList []string
+
 				for _, filename := range resourceFileNames {
 					path = csarDirPath + "/" + filename
 
 					_, err = os.Stat(path)
 					if os.IsNotExist(err) {
-						return nil, pkgerrors.New("File " + path + "does not exists")
+						return "", nil, pkgerrors.New("File " + path + "does not exists")
 					}
 
 					log.Println("Processing file: " + path)
-					err = kubeData.ReadDeploymentYAML(path)
+
+					typePlugin := plugins.LoadedPlugins["deployment"]
+
+					symDeploymentData, err := typePlugin.Lookup("DeploymentData")
 					if err != nil {
-						return nil, err
+						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin data")
 					}
+
+					// Type assert to a concrete plugin type. Should this be taken from
+					// plugins or from reference copy of plugin type placed in KRD?
+					deploymentData, ok := symDeploymentData.(plugins.KubeDeploymentData)
+					if !ok {
+						return "", nil, pkgerrors.New("Error loading " + resourceName + " plugin data")
+					}
+
+					err = deploymentData.ReadYAML(path)
+					if err != nil {
+						return "", nil, pkgerrors.Wrap(err, "Error Parsing "+filename+".yaml")
+					}
+
+					err = deploymentData.ParseYAML()
+					if err != nil {
+						return "", nil, pkgerrors.Wrap(err, "Error Reading "+filename+".yaml")
+					}
+
+					if deploymentData.Deployment == nil {
+						return "", nil, pkgerrors.New("Read deploymentData.Deployment error")
+					}
+
+					// cloud1-default-uuid-sisedeploy
+					internalDeploymentName := internalVNFID + "-" + deploymentData.Deployment.Name
+
+					deploymentData.Deployment.Namespace = namespace
+					deploymentData.Deployment.Name = internalDeploymentName
+
+					symDeploymentClient, err := typePlugin.Lookup("KubeDeploymentClient")
+					if err != nil {
+						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin client")
+					}
+
+					deploymentClient, ok := symDeploymentClient.(krd.KubeResourceClient)
+					if !ok {
+						return "", nil, pkgerrors.New("Error loading " + resourceName + " plugin client")
+					}
+
+					_, err = deploymentClient.CreateResource(deploymentData, namespace)
+					if err != nil {
+						return "", nil, pkgerrors.Wrap(err, "Error creating "+resourceName)
+					}
+
+					// ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+					deployNameList = append(deployNameList, internalDeploymentName)
+
+					/*
+						{
+							"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+						}
+					*/
+					resourceYAMLNameMap[resourceName] = deployNameList
 				}
 			case "service":
 				// Load/Use Service data/client
+				var serviceNameList []string
+
 				for _, filename := range resourceFileNames {
 					path = csarDirPath + "/" + filename
 
 					_, err = os.Stat(path)
 					if os.IsNotExist(err) {
-						return nil, pkgerrors.New("File " + path + "does not exists")
+						return "", nil, pkgerrors.New("File " + path + "does not exists")
 					}
 
 					log.Println("Processing file: " + path)
-					err = kubeData.ReadServiceYAML(path)
+
+					typePlugin := plugins.LoadedPlugins["service"]
+
+					symDeploymentData, err := typePlugin.Lookup("ServiceData")
 					if err != nil {
-						return nil, err
+						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin data")
 					}
+
+					serviceData, ok := symDeploymentData.(plugins.KubeServiceData)
+					if !ok {
+						return "", nil, pkgerrors.New("Error loading " + resourceName + " plugin data")
+					}
+
+					err = serviceData.ReadYAML(path)
+					if err != nil {
+						return "", nil, pkgerrors.Wrap(err, "Error Parsing "+filename+".yaml")
+					}
+
+					err = serviceData.ParseYAML()
+					if err != nil {
+						return "", nil, pkgerrors.Wrap(err, "Error Reading "+filename+".yaml")
+					}
+
+					if serviceData.Service == nil {
+						return "", nil, pkgerrors.New("Read serviceData.Service error")
+					}
+
+					// cloud1-default-uuid-sisesvc
+					internalServiceName := internalVNFID + "-" + serviceData.Service.Name
+
+					serviceData.Service.Namespace = namespace
+					serviceData.Service.Name = internalServiceName
+
+					symDeploymentClient, err := typePlugin.Lookup("KubeServiceClient")
+					if err != nil {
+						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin client")
+					}
+
+					serviceClient, ok := symDeploymentClient.(krd.KubeResourceClient)
+					if !ok {
+						return "", nil, pkgerrors.New("Error loading " + resourceName + " plugin client")
+					}
+
+					_, err = serviceClient.CreateResource(serviceData, namespace)
+					if err != nil {
+						return "", nil, pkgerrors.Wrap(err, "Error creating "+resourceName)
+					}
+
+					// ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+					serviceNameList = append(serviceNameList, internalServiceName)
+
+					/*
+						{
+							"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+						}
+					*/
+					resourceYAMLNameMap[resourceName] = serviceNameList
 				}
 			default:
-				return kubeData, pkgerrors.New(resourceName + " resource type not supported.")
+				return "", nil, pkgerrors.New(resourceName + " resource type not supported.")
 			}
 		}
 	}
-	return kubeData, nil
+
+	/*
+		uuid,
+		{
+			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+		},
+		nil
+	*/
+	return externalVNFID, resourceYAMLNameMap, nil
+}
+
+// DestroyVNF deletes VNFs based on data passed
+var DestroyVNF = func(data map[string][]string, namespace string) error {
+	/*
+		{
+			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+		},
+	*/
+	for resourceName, resourceList := range data {
+		switch resourceName {
+		case "deployment":
+			typePlugin := plugins.LoadedPlugins["deployment"]
+			symDeploymentClient, err := typePlugin.Lookup("KubeDeploymentClient")
+			if err != nil {
+				return pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin client")
+			}
+
+			deploymentClient, ok := symDeploymentClient.(krd.KubeResourceClient)
+			if !ok {
+				return pkgerrors.New("Error loading " + resourceName + " plugin client")
+			}
+
+			for _, deploymentName := range resourceList {
+				err = deploymentClient.DeleteResource(deploymentName, namespace)
+				if err != nil {
+					return pkgerrors.Wrap(err, "Error destroying "+deploymentName)
+				}
+			}
+
+		case "service":
+			typePlugin := plugins.LoadedPlugins["service"]
+			symServiceClient, err := typePlugin.Lookup("KubeServiceClient")
+			if err != nil {
+				return pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin client")
+			}
+
+			serviceClient, ok := symServiceClient.(krd.KubeResourceClient)
+			if !ok {
+				return pkgerrors.New("Error loading " + resourceName + " plugin client")
+			}
+
+			for _, serviceName := range resourceList {
+				err = serviceClient.DeleteResource(serviceName, namespace)
+				if err != nil {
+					return pkgerrors.Wrap(err, "Error destroying "+serviceName)
+				}
+			}
+		default:
+			return pkgerrors.New("Error unsupported " + resourceName)
+		}
+	}
+	return nil
 }
 
 // SequenceFile stores the sequence of execution
 type SequenceFile struct {
 	ResourceTypePathMap []map[string][]string `yaml:"resources"`
-	// Other plugins
 }
 
 // ReadSequenceFile reads the sequence yaml to return the order or reads
@@ -237,4 +289,40 @@ func ReadSequenceFile(yamlFilePath string) (SequenceFile, error) {
 	}
 
 	return seqFile, nil
+}
+
+// SerializeMap serializes map[string][]string into a string
+func SerializeMap(data map[string][]string) (string, error) {
+	/*
+		IP:
+		{
+			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+		}
+		OP:
+		// "{"deployment":<>,"service":<>}"
+	*/
+	out, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
+}
+
+// DeSerializeMap deserializes string into map[string][]string
+func DeSerializeMap(serialData string) (map[string][]string, error) {
+	/*
+		IP:
+		// "{"deployment":<>,"service":<>}"
+		OP:
+		{
+			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+		}
+	*/
+	var result map[string][]string
+	json.Unmarshal([]byte(serialData), result)
+
+	return result, nil
 }

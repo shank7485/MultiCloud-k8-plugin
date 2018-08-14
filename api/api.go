@@ -17,8 +17,10 @@ import (
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
 	"os"
+	"plugin"
 
 	"github.com/shank7485/k8-plugin-multicloud/db"
+	"github.com/shank7485/k8-plugin-multicloud/plugins"
 )
 
 // CheckInitialSettings is used to check initial settings required to start api
@@ -50,6 +52,22 @@ func CheckInitialSettings() error {
 		return pkgerrors.Cause(err)
 	}
 
+	// Change to read from directory
+
+	p, err := plugin.Open("deployment.so")
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
+	plugins.LoadedPlugins["deployment"] = p
+
+	p, err = plugin.Open("service.so")
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
+	plugins.LoadedPlugins["service"] = p
+
 	return nil
 }
 
@@ -64,7 +82,7 @@ func NewRouter(kubeconfig string) (s *mux.Router) {
 	vnfInstanceHandler.HandleFunc("/{cloudRegionID}/{namespace}/{externalVNFID}", GetHandler).Methods("GET")
 
 	// (TODO): Fix update method
-	vnfInstanceHandler.HandleFunc("/{vnfInstanceId}", UpdateHandler).Methods("PUT")
+	// vnfInstanceHandler.HandleFunc("/{vnfInstanceId}", UpdateHandler).Methods("PUT")
 
 	return router
 }

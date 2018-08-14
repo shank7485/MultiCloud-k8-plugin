@@ -15,10 +15,10 @@ package krd
 
 import (
 	"errors"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
+	// "fmt"
+	// "io/ioutil"
+	// "log"
+	// "os"
 
 	pkgerrors "github.com/pkg/errors"
 
@@ -26,7 +26,7 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
+	// "k8s.io/client-go/kubernetes/scheme"
 	appsV1Interface "k8s.io/client-go/kubernetes/typed/apps/v1"
 	coreV1Interface "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -57,11 +57,6 @@ type ClientDeploymentInterface interface {
 type ClientServiceInterface interface {
 	coreV1Interface.CoreV1Interface
 }
-
-// // ClientNamespaceInterface is for Namespace clients
-// type ClientNamespaceInterface interface {
-// 	coreV1Interface.NamespaceInterface
-// }
 
 // NewClient loads Kubernetes local configuration values into a client
 func NewClient(kubeconfigPath string) (*Client, error) {
@@ -370,144 +365,150 @@ type KubeResourceData interface {
 	ParseYAML(string) error
 }
 
+// KubeResourceData is a struct which will be filled by the plugins
+// type KubeResourceData struct {
+// 	ResourceRawData []byte
+// 	ResourceStruct interface{}
+// }
+
 /////////////////////////////////////////////////////////////////////////////////
 
 // CSARParser is an interface to parse both Deployment and Services
 // yaml files
-type CSARParser interface {
-	ReadDeploymentYAML(string) error
-	ReadServiceYAML(string) error
-	ParseDeploymentInfo() error
-	ParseServiceInfo() error
-}
+// type CSARParser interface {
+// 	ReadDeploymentYAML(string) error
+// 	ReadServiceYAML(string) error
+// 	ParseDeploymentInfo() error
+// 	ParseServiceInfo() error
+// }
 
 // KubernetesData to store CSAR information including both services and
 // deployments
-type KubernetesData struct {
-	DeploymentData []byte
-	ServiceData    []byte
-	Deployment     *appsV1.Deployment
-	Service        *coreV1.Service
-}
+// type KubernetesData struct {
+// 	DeploymentData []byte
+// 	ServiceData    []byte
+// 	Deployment     *appsV1.Deployment
+// 	Service        *coreV1.Service
+// }
 
 // ReadDeploymentYAML reads deployment.yaml and stores in CSARData struct
-func (c *KubernetesData) ReadDeploymentYAML(yamlFilePath string) error {
-	if _, err := os.Stat(yamlFilePath); err == nil {
-		log.Println("Reading deployment YAML")
-		rawBytes, err := ioutil.ReadFile(yamlFilePath)
-		if err != nil {
-			return pkgerrors.Wrap(err, "Deployment YAML file read error")
-		}
+// func (c *KubernetesData) ReadDeploymentYAML(yamlFilePath string) error {
+// 	if _, err := os.Stat(yamlFilePath); err == nil {
+// 		log.Println("Reading deployment YAML")
+// 		rawBytes, err := ioutil.ReadFile(yamlFilePath)
+// 		if err != nil {
+// 			return pkgerrors.Wrap(err, "Deployment YAML file read error")
+// 		}
 
-		c.DeploymentData = rawBytes
+// 		c.DeploymentData = rawBytes
 
-		err = c.ParseDeploymentInfo()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// 		err = c.ParseDeploymentInfo()
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }
 
-// ReadServiceYAML reads service.yaml and stores in CSARData struct
-func (c *KubernetesData) ReadServiceYAML(yamlFilePath string) error {
-	if _, err := os.Stat(yamlFilePath); err == nil {
-		log.Println("Reading service YAML")
-		rawBytes, err := ioutil.ReadFile(yamlFilePath)
-		if err != nil {
-			return pkgerrors.Wrap(err, "Service YAML file read error")
-		}
+// // ReadServiceYAML reads service.yaml and stores in CSARData struct
+// func (c *KubernetesData) ReadServiceYAML(yamlFilePath string) error {
+// 	if _, err := os.Stat(yamlFilePath); err == nil {
+// 		log.Println("Reading service YAML")
+// 		rawBytes, err := ioutil.ReadFile(yamlFilePath)
+// 		if err != nil {
+// 			return pkgerrors.Wrap(err, "Service YAML file read error")
+// 		}
 
-		c.ServiceData = rawBytes
+// 		c.ServiceData = rawBytes
 
-		err = c.ParseServiceInfo()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// 		err = c.ParseServiceInfo()
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }
 
-// ParseDeploymentInfo retrieves the deployment YAML file from a CSAR
-func (c *KubernetesData) ParseDeploymentInfo() error {
-	if c.DeploymentData != nil {
-		log.Println("Decoding deployment YAML")
+// // ParseDeploymentInfo retrieves the deployment YAML file from a CSAR
+// func (c *KubernetesData) ParseDeploymentInfo() error {
+// 	if c.DeploymentData != nil {
+// 		log.Println("Decoding deployment YAML")
 
-		decode := scheme.Codecs.UniversalDeserializer().Decode
-		obj, _, err := decode(c.DeploymentData, nil, nil)
-		if err != nil {
-			return pkgerrors.Wrap(err, "Deserialize deployment error")
-		}
+// 		decode := scheme.Codecs.UniversalDeserializer().Decode
+// 		obj, _, err := decode(c.DeploymentData, nil, nil)
+// 		if err != nil {
+// 			return pkgerrors.Wrap(err, "Deserialize deployment error")
+// 		}
 
-		switch o := obj.(type) {
-		case *appsV1.Deployment:
-			c.Deployment = o
-			return nil
-		}
-	}
-	return nil
-}
+// 		switch o := obj.(type) {
+// 		case *appsV1.Deployment:
+// 			c.Deployment = o
+// 			return nil
+// 		}
+// 	}
+// 	return nil
+// }
 
-// ParseServiceInfo retrieves the service YAML file from a CSAR
-func (c *KubernetesData) ParseServiceInfo() error {
-	if c.ServiceData != nil {
-		log.Println("Decoding service YAML")
+// // ParseServiceInfo retrieves the service YAML file from a CSAR
+// func (c *KubernetesData) ParseServiceInfo() error {
+// 	if c.ServiceData != nil {
+// 		log.Println("Decoding service YAML")
 
-		decode := scheme.Codecs.UniversalDeserializer().Decode
-		obj, _, err := decode(c.ServiceData, nil, nil)
-		if err != nil {
-			return pkgerrors.Wrap(err, "Deserialize deployment error")
-		}
+// 		decode := scheme.Codecs.UniversalDeserializer().Decode
+// 		obj, _, err := decode(c.ServiceData, nil, nil)
+// 		if err != nil {
+// 			return pkgerrors.Wrap(err, "Deserialize deployment error")
+// 		}
 
-		switch o := obj.(type) {
-		case *coreV1.Service:
-			c.Service = o
-			return nil
-		}
-	}
-	return nil
-}
+// 		switch o := obj.(type) {
+// 		case *coreV1.Service:
+// 			c.Service = o
+// 			return nil
+// 		}
+// 	}
+// 	return nil
+// }
 
-// AddNetworkAnnotationsToPod adds networks metadata to pods
-func AddNetworkAnnotationsToPod(c *KubernetesData, networksList []string) {
-	/*
-		Example Annotation:
+// // AddNetworkAnnotationsToPod adds networks metadata to pods
+// func AddNetworkAnnotationsToPod(c *KubernetesData, networksList []string) {
+// 	/*
+// 		Example Annotation:
 
-		apiVersion: v1
-		kind: Pod
-		metadata:
-		name: multus-multi-net-poc
-		annotations:
-			networks: '[
-				{ "name": "flannel-conf" },
-				{ "name": "sriov-conf"},
-				{ "name": "sriov-vlanid-l2enable-conf" }
-			]'
-		spec:  # specification of the pod's contents
-		containers:
-		- name: multus-multi-net-poc
-			image: "busybox"
-			command: ["top"]
-			stdin: true
-			tty: true
-	*/
+// 		apiVersion: v1
+// 		kind: Pod
+// 		metadata:
+// 		name: multus-multi-net-poc
+// 		annotations:
+// 			networks: '[
+// 				{ "name": "flannel-conf" },
+// 				{ "name": "sriov-conf"},
+// 				{ "name": "sriov-vlanid-l2enable-conf" }
+// 			]'
+// 		spec:  # specification of the pod's contents
+// 		containers:
+// 		- name: multus-multi-net-poc
+// 			image: "busybox"
+// 			command: ["top"]
+// 			stdin: true
+// 			tty: true
+// 	*/
 
-	deployment := c.Deployment
-	var networksString string
-	networksString = "["
+// 	deployment := c.Deployment
+// 	var networksString string
+// 	networksString = "["
 
-	for _, network := range networksList {
-		val := fmt.Sprintf("{ \"name\": \"%s\" },", network)
-		networksString += val
-	}
+// 	for _, network := range networksList {
+// 		val := fmt.Sprintf("{ \"name\": \"%s\" },", network)
+// 		networksString += val
+// 	}
 
-	// Removing the final ","
-	if len(networksString) > 0 {
-		networksString = networksString[:len(networksString)-1]
-	}
-	networksString += "]"
+// 	// Removing the final ","
+// 	if len(networksString) > 0 {
+// 		networksString = networksString[:len(networksString)-1]
+// 	}
+// 	networksString += "]"
 
-	deployment.Spec.Template.ObjectMeta = metaV1.ObjectMeta{
-		Annotations: map[string]string{"kubernetes.v1.cni.cncf.io/networks": networksString},
-	}
-}
+// 	deployment.Spec.Template.ObjectMeta = metaV1.ObjectMeta{
+// 		Annotations: map[string]string{"kubernetes.v1.cni.cncf.io/networks": networksString},
+// 	}
+// }
