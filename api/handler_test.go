@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/shank7485/k8-plugin-multicloud/csarParser"
+	"github.com/shank7485/k8-plugin-multicloud/csarparser"
 	"github.com/shank7485/k8-plugin-multicloud/db"
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 	appsV1 "k8s.io/api/apps/v1"
