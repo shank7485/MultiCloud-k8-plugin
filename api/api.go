@@ -20,11 +20,10 @@ import (
 	"plugin"
 
 	"github.com/shank7485/k8-plugin-multicloud/db"
-	"github.com/shank7485/k8-plugin-multicloud/plugins"
+	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
-// CheckInitialSettings is used to check initial settings required to start api
-func CheckInitialSettings() error {
+func CheckEnvVariables() error {
 	if os.Getenv("CSAR_DIR") == "" {
 		return pkgerrors.New("environment variable CSAR_DIR not set")
 	}
@@ -37,6 +36,13 @@ func CheckInitialSettings() error {
 		return pkgerrors.New("enviromment variable DATABASE_TYPE not set")
 	}
 
+	if os.Getenv("PLUGINS_DIR") == "" {
+		return pkgerrors.New("enviromment variable PLUGINS_DIR not set")
+	}
+	return nil
+}
+
+func CheckDatabaseConnection() error {
 	err := db.CreateDBClient(os.Getenv("DATABASE_TYPE"))
 	if err != nil {
 		return pkgerrors.Cause(err)
@@ -51,22 +57,43 @@ func CheckInitialSettings() error {
 	if err != nil {
 		return pkgerrors.Cause(err)
 	}
+	return nil
+}
 
-	// Change to read from directory
-
-	p, err := plugin.Open("deployment.so")
+func LoadPlugins() error {
+	p, err := plugin.Open(os.Getenv("PLUGINS_DIR") + "/deployment/deployment.so")
 	if err != nil {
 		return pkgerrors.Cause(err)
 	}
 
-	plugins.LoadedPlugins["deployment"] = p
+	krd.LoadedPlugins["deployment"] = p
 
-	p, err = plugin.Open("service.so")
+	p, err = plugin.Open(os.Getenv("PLUGINS_DIR") + "/service/service.so")
 	if err != nil {
 		return pkgerrors.Cause(err)
 	}
 
-	plugins.LoadedPlugins["service"] = p
+	krd.LoadedPlugins["service"] = p
+
+	return nil
+}
+
+// CheckInitialSettings is used to check initial settings required to start api
+func CheckInitialSettings() error {
+	err := CheckEnvVariables()
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
+	err = CheckDatabaseConnection()
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
+	err = LoadPlugins()
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
 
 	return nil
 }

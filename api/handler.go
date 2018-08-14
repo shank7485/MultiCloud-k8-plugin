@@ -24,37 +24,20 @@ import (
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
 	// "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/shank7485/k8-plugin-multicloud/csarparser"
 	"github.com/shank7485/k8-plugin-multicloud/db"
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
-// VNFInstanceService communicates the actions to Kubernetes deployment
-type VNFInstanceService struct {
-	Client krd.VNFInstanceClientInterface
-}
-
-// NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
-func NewVNFInstanceService(kubeConfigPath string) (*VNFInstanceService, error) {
-	client, err := GetVNFClient(kubeConfigPath)
-	if err != nil {
-		return nil, err
-	}
-	return &VNFInstanceService{
-		Client: client,
-	}, nil
-}
-
 // GetVNFClient retrieve the client used to communicate with a Kubernetes Cluster
-var GetVNFClient = func(kubeConfigPath string) (krd.VNFInstanceClientInterface, error) {
-	var client krd.VNFInstanceClientInterface
-
-	client, err := krd.NewClient(kubeConfigPath)
+var GetVNFClient = func(kubeConfigPath string) (kubernetes.Clientset, error) {
+	client, err := krd.GetKubeClient(kubeConfigPath)
 	if err != nil {
-		return nil, err
+		return client, err
 	}
-	return client, err
+	return client, nil
 }
 
 func validateBody(body interface{}) error {
@@ -105,13 +88,12 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	// err := DownloadKubeConfigFromAAI(resource.CloudRegionID, os.Getenv("KUBE_CONFIG_DIR")
-	s, err := NewVNFInstanceService(os.Getenv("KUBE_CONFIG_DIR") + "/" + resource.CloudRegionID)
+	kubeclient, err := GetVNFClient(os.Getenv("KUBE_CONFIG_DIR") + "/" + resource.CloudRegionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	present, err := s.Client.IsNamespaceExists(resource.Namespace)
+	present, err := krd.IsNamespaceExists(resource.Namespace, &kubeclient)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Check namespace exists error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -119,7 +101,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if present == false {
-		err = s.Client.CreateNamespace(resource.Namespace)
+		err = krd.CreateNamespace(resource.Namespace, &kubeclient)
 		if err != nil {
 			werr := pkgerrors.Wrap(err, "Create new namespace error")
 			http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -135,7 +117,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		},
 		nil
 	*/
-	externalVNFID, resourceNameMap, err := csarparser.CreateVNF(resource.CsarID, resource.CloudRegionID, resource.Namespace)
+	externalVNFID, resourceNameMap, err := csarparser.CreateVNF(resource.CsarID, resource.CloudRegionID, resource.Namespace, &kubeclient)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Read Kubernetes Data information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -254,7 +236,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	// err := DownloadKubeConfigFromAAI(resource.CloudRegionID, os.Getenv("KUBE_CONFIG_DIR")
-	s, err := NewVNFInstanceService(os.Getenv("KUBE_CONFIG_DIR") + "/" + cloudRegionID)
+	kubeclient, err := GetVNFClient(os.Getenv("KUBE_CONFIG_DIR") + "/" + cloudRegionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -285,14 +267,12 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = csarparser.DestroyVNF(deserializedResourceNameMap, namespace)
+	err = csarparser.DestroyVNF(deserializedResourceNameMap, namespace, &kubeclient)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-	// err = s.Client.DeleteService(internalServiceName, namespace)
-	// err = s.Client.DeleteDeployment(internalDeploymentName, namespace)
 
 	err = db.DBconn.DeleteEntry(internalVNFID)
 	if err != nil {

@@ -15,8 +15,8 @@ package csarparser
 
 import (
 	"encoding/json"
-	"github.com/shank7485/k8-plugin-multicloud/plugins"
 	"io/ioutil"
+	"k8s.io/client-go/kubernetes"
 	"log"
 	"os"
 
@@ -29,7 +29,7 @@ import (
 )
 
 // CreateVNF reads the CSAR files from the files system and creates them one by one
-var CreateVNF = func(csarID string, cloudRegionID string, namespace string) (string, map[string][]string, error) {
+var CreateVNF = func(csarID string, cloudRegionID string, namespace string, kubeclient *kubernetes.Clientset) (string, map[string][]string, error) {
 	var path string
 
 	// uuid
@@ -65,19 +65,14 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string) (str
 
 					log.Println("Processing file: " + path)
 
-					typePlugin := plugins.LoadedPlugins["deployment"]
+					typePlugin := krd.LoadedPlugins["deployment"]
 
-					symDeploymentData, err := typePlugin.Lookup("DeploymentData")
+					symDeploymentDataFunc, err := typePlugin.Lookup("CreateKubeData")
 					if err != nil {
 						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin data")
 					}
 
-					// Type assert to a concrete plugin type. Should this be taken from
-					// plugins or from reference copy of plugin type placed in KRD?
-					deploymentData, ok := symDeploymentData.(plugins.KubeDeploymentData)
-					if !ok {
-						return "", nil, pkgerrors.New("Error loading " + resourceName + " plugin data")
-					}
+					deploymentData := symDeploymentDataFunc.(func() krd.KubeDeploymentData)()
 
 					err = deploymentData.ReadYAML(path)
 					if err != nil {
@@ -109,7 +104,7 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string) (str
 						return "", nil, pkgerrors.New("Error loading " + resourceName + " plugin client")
 					}
 
-					_, err = deploymentClient.CreateResource(deploymentData, namespace)
+					_, err = deploymentClient.CreateResource(deploymentData, namespace, kubeclient)
 					if err != nil {
 						return "", nil, pkgerrors.Wrap(err, "Error creating "+resourceName)
 					}
@@ -138,17 +133,14 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string) (str
 
 					log.Println("Processing file: " + path)
 
-					typePlugin := plugins.LoadedPlugins["service"]
+					typePlugin := krd.LoadedPlugins["service"]
 
-					symDeploymentData, err := typePlugin.Lookup("ServiceData")
+					symServiceDataFunc, err := typePlugin.Lookup("CreateKubeData")
 					if err != nil {
 						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin data")
 					}
 
-					serviceData, ok := symDeploymentData.(plugins.KubeServiceData)
-					if !ok {
-						return "", nil, pkgerrors.New("Error loading " + resourceName + " plugin data")
-					}
+					serviceData := symServiceDataFunc.(func() krd.KubeServiceData)()
 
 					err = serviceData.ReadYAML(path)
 					if err != nil {
@@ -180,7 +172,7 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string) (str
 						return "", nil, pkgerrors.New("Error loading " + resourceName + " plugin client")
 					}
 
-					_, err = serviceClient.CreateResource(serviceData, namespace)
+					_, err = serviceClient.CreateResource(serviceData, namespace, kubeclient)
 					if err != nil {
 						return "", nil, pkgerrors.Wrap(err, "Error creating "+resourceName)
 					}
@@ -213,7 +205,7 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string) (str
 }
 
 // DestroyVNF deletes VNFs based on data passed
-var DestroyVNF = func(data map[string][]string, namespace string) error {
+var DestroyVNF = func(data map[string][]string, namespace string, kubeclient *kubernetes.Clientset) error {
 	/*
 		{
 			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
@@ -223,7 +215,7 @@ var DestroyVNF = func(data map[string][]string, namespace string) error {
 	for resourceName, resourceList := range data {
 		switch resourceName {
 		case "deployment":
-			typePlugin := plugins.LoadedPlugins["deployment"]
+			typePlugin := krd.LoadedPlugins["deployment"]
 			symDeploymentClient, err := typePlugin.Lookup("KubeDeploymentClient")
 			if err != nil {
 				return pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin client")
@@ -235,14 +227,14 @@ var DestroyVNF = func(data map[string][]string, namespace string) error {
 			}
 
 			for _, deploymentName := range resourceList {
-				err = deploymentClient.DeleteResource(deploymentName, namespace)
+				err = deploymentClient.DeleteResource(deploymentName, namespace, kubeclient)
 				if err != nil {
 					return pkgerrors.Wrap(err, "Error destroying "+deploymentName)
 				}
 			}
 
 		case "service":
-			typePlugin := plugins.LoadedPlugins["service"]
+			typePlugin := krd.LoadedPlugins["service"]
 			symServiceClient, err := typePlugin.Lookup("KubeServiceClient")
 			if err != nil {
 				return pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin client")
@@ -254,7 +246,7 @@ var DestroyVNF = func(data map[string][]string, namespace string) error {
 			}
 
 			for _, serviceName := range resourceList {
-				err = serviceClient.DeleteResource(serviceName, namespace)
+				err = serviceClient.DeleteResource(serviceName, namespace, kubeclient)
 				if err != nil {
 					return pkgerrors.Wrap(err, "Error destroying "+serviceName)
 				}

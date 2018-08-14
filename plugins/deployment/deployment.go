@@ -1,7 +1,8 @@
-package plugins
+package main
 
 import (
 	"io/ioutil"
+	"k8s.io/client-go/kubernetes"
 	"log"
 	"os"
 
@@ -10,28 +11,22 @@ import (
 	appsV1 "k8s.io/api/apps/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	appsV1Interface "k8s.io/client-go/kubernetes/typed/apps/v1"
 
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
 // KubeDeploymentClient is a concrete implementaton of DeploymentInterface and KubeResourceClient
 type KubeDeploymentClient struct {
-	deploymentClient DeploymentInterface
 	krd.KubeResourceClient
 }
 
-// DeploymentInterface is an interface which wraps Apps V1
-type DeploymentInterface interface {
-	appsV1Interface.AppsV1Interface
-}
-
 // CreateResource object in a specific Kubernetes Deployment
-func (d *KubeDeploymentClient) CreateResource(deployment *appsV1.Deployment, namespace string) (string, error) {
+func (d *KubeDeploymentClient) CreateResource(deployment *appsV1.Deployment, namespace string, kubeclient *kubernetes.Clientset) (string, error) {
 	if namespace == "" {
 		namespace = "default"
 	}
-	result, err := d.deploymentClient.Deployments(namespace).Create(deployment)
+
+	result, err := kubeclient.AppsV1().Deployments(namespace).Create(deployment)
 	if err != nil {
 		return "", pkgerrors.Wrap(err, "Create Deployment error")
 	}
@@ -40,7 +35,7 @@ func (d *KubeDeploymentClient) CreateResource(deployment *appsV1.Deployment, nam
 }
 
 // ListResources of existing deployments hosted in a specific Kubernetes Deployment
-func (d *KubeDeploymentClient) ListResources(limit int64, namespace string) (*[]string, error) {
+func (d *KubeDeploymentClient) ListResources(limit int64, namespace string, kubeclient *kubernetes.Clientset) (*[]string, error) {
 	if namespace == "" {
 		namespace = "default"
 	}
@@ -48,10 +43,10 @@ func (d *KubeDeploymentClient) ListResources(limit int64, namespace string) (*[]
 	opts := metaV1.ListOptions{
 		Limit: limit,
 	}
-	opts.APIVersion = apiVersion
+	opts.APIVersion = "apps/v1"
 	opts.Kind = "Deployment"
 
-	list, err := d.deploymentClient.Deployments(namespace).List(opts)
+	list, err := kubeclient.AppsV1().Deployments(namespace).List(opts)
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "Get Deployment list error")
 	}
@@ -67,13 +62,13 @@ func (d *KubeDeploymentClient) ListResources(limit int64, namespace string) (*[]
 }
 
 // DeleteResource existing deployments hosting in a specific Kubernetes Deployment
-func (d *KubeDeploymentClient) DeleteResource(internalVNFID string, namespace string) error {
+func (d *KubeDeploymentClient) DeleteResource(internalVNFID string, namespace string, kubeclient *kubernetes.Clientset) error {
 	if namespace == "" {
 		namespace = "default"
 	}
 
 	deletePolicy := metaV1.DeletePropagationForeground
-	err := d.deploymentClient.Deployments(namespace).Delete(internalVNFID, &metaV1.DeleteOptions{
+	err := kubeclient.AppsV1().Deployments(namespace).Delete(internalVNFID, &metaV1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	})
 
@@ -85,7 +80,7 @@ func (d *KubeDeploymentClient) DeleteResource(internalVNFID string, namespace st
 }
 
 // GetResource existing deployment hosting in a specific Kubernetes Deployment
-func (d *KubeDeploymentClient) GetResource(internalVNFID string, namespace string) (string, error) {
+func (d *KubeDeploymentClient) GetResource(internalVNFID string, namespace string, kubeclient *kubernetes.Clientset) (string, error) {
 	if namespace == "" {
 		namespace = "default"
 	}
@@ -93,10 +88,10 @@ func (d *KubeDeploymentClient) GetResource(internalVNFID string, namespace strin
 	opts := metaV1.ListOptions{
 		Limit: 10,
 	}
-	opts.APIVersion = apiVersion
+	opts.APIVersion = "apps/v1"
 	opts.Kind = "Deployment"
 
-	list, err := d.deploymentClient.Deployments(namespace).List(opts)
+	list, err := kubeclient.AppsV1().Deployments(namespace).List(opts)
 	if err != nil {
 		return "", pkgerrors.Wrap(err, "Get Deployment error")
 	}
@@ -116,7 +111,10 @@ type KubeDeploymentData struct {
 	krd.KubeResourceData
 }
 
-var DeploymentData KubeDeploymentData
+func CreateKubeData() KubeDeploymentData {
+	var res KubeDeploymentData
+	return res
+}
 
 // ReadYAML reads deployment.yaml and stores in KubeDeploymentData struct
 func (c *KubeDeploymentData) ReadYAML(yamlFilePath string) error {
