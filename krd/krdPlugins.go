@@ -20,10 +20,11 @@ type KubeResourceClient interface {
 
 // GenericKubeResourceData is a struct which stores all supported Kubernetes plugin types
 type GenericKubeResourceData struct {
-	DeploymentData *appsV1.Deployment
-	ServiceData    *coreV1.Service
-
 	YamlFilePath  string
 	Namespace     string
 	InternalVNFID string
+
+	// Add additional Kubernetes plugins below kinds
+	DeploymentData *appsV1.Deployment
+	ServiceData    *coreV1.Service
 }
