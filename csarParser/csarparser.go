@@ -46,7 +46,7 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string, kube
 		return "", nil, pkgerrors.Wrap(err, "Error while reading Sequence File: "+sequenceYAMLPath)
 	}
 
-	var resourceYAMLNameMap map[string][]string
+	resourceYAMLNameMap := make(map[string][]string)
 
 	for _, resource := range seqFile.ResourceTypePathMap {
 		for resourceName, resourceFileNames := range resource {
@@ -65,48 +65,24 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string, kube
 
 					log.Println("Processing file: " + path)
 
+					genericKubeData := &krd.GenericKubeResourceData{
+						YamlFilePath:  path,
+						Namespace:     namespace,
+						InternalVNFID: internalVNFID,
+					}
+
 					typePlugin := krd.LoadedPlugins["deployment"]
 
-					symDeploymentDataFunc, err := typePlugin.Lookup("CreateKubeData")
+					symCreateResourceFunc, err := typePlugin.Lookup("CreateResource")
 					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin data")
-					}
-
-					deploymentData := symDeploymentDataFunc.(func() krd.KubeDeploymentData)()
-
-					err = deploymentData.ReadYAML(path)
-					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error Parsing "+filename+".yaml")
-					}
-
-					err = deploymentData.ParseYAML()
-					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error Reading "+filename+".yaml")
-					}
-
-					if deploymentData.Deployment == nil {
-						return "", nil, pkgerrors.New("Read deploymentData.Deployment error")
+						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+" plugin")
 					}
 
 					// cloud1-default-uuid-sisedeploy
-					internalDeploymentName := internalVNFID + "-" + deploymentData.Deployment.Name
-
-					deploymentData.Deployment.Namespace = namespace
-					deploymentData.Deployment.Name = internalDeploymentName
-
-					symDeploymentClient, err := typePlugin.Lookup("KubeDeploymentClient")
+					internalDeploymentName, err := symCreateResourceFunc.(func(*krd.GenericKubeResourceData, *kubernetes.Clientset) (string, error))(
+						genericKubeData, kubeclient)
 					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin client")
-					}
-
-					deploymentClient, ok := symDeploymentClient.(krd.KubeResourceClient)
-					if !ok {
-						return "", nil, pkgerrors.New("Error loading " + resourceName + " plugin client")
-					}
-
-					_, err = deploymentClient.CreateResource(deploymentData, namespace, kubeclient)
-					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error creating "+resourceName)
+						return "", nil, pkgerrors.Wrap(err, "Error in plugin "+resourceName+" plugin")
 					}
 
 					// ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
@@ -133,48 +109,24 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string, kube
 
 					log.Println("Processing file: " + path)
 
+					genericKubeData := &krd.GenericKubeResourceData{
+						YamlFilePath:  path,
+						Namespace:     namespace,
+						InternalVNFID: internalVNFID,
+					}
+
 					typePlugin := krd.LoadedPlugins["service"]
 
-					symServiceDataFunc, err := typePlugin.Lookup("CreateKubeData")
+					symCreateResourceFunc, err := typePlugin.Lookup("CreateResource")
 					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin data")
+						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+" plugin")
 					}
 
-					serviceData := symServiceDataFunc.(func() krd.KubeServiceData)()
-
-					err = serviceData.ReadYAML(path)
+					// cloud1-default-uuid-siseservice
+					internalServiceName, err := symCreateResourceFunc.(func(*krd.GenericKubeResourceData, *kubernetes.Clientset) (string, error))(
+						genericKubeData, kubeclient)
 					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error Parsing "+filename+".yaml")
-					}
-
-					err = serviceData.ParseYAML()
-					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error Reading "+filename+".yaml")
-					}
-
-					if serviceData.Service == nil {
-						return "", nil, pkgerrors.New("Read serviceData.Service error")
-					}
-
-					// cloud1-default-uuid-sisesvc
-					internalServiceName := internalVNFID + "-" + serviceData.Service.Name
-
-					serviceData.Service.Namespace = namespace
-					serviceData.Service.Name = internalServiceName
-
-					symDeploymentClient, err := typePlugin.Lookup("KubeServiceClient")
-					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin client")
-					}
-
-					serviceClient, ok := symDeploymentClient.(krd.KubeResourceClient)
-					if !ok {
-						return "", nil, pkgerrors.New("Error loading " + resourceName + " plugin client")
-					}
-
-					_, err = serviceClient.CreateResource(serviceData, namespace, kubeclient)
-					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error creating "+resourceName)
+						return "", nil, pkgerrors.Wrap(err, "Error in plugin "+resourceName+" plugin")
 					}
 
 					// ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
@@ -206,28 +158,28 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string, kube
 
 // DestroyVNF deletes VNFs based on data passed
 var DestroyVNF = func(data map[string][]string, namespace string, kubeclient *kubernetes.Clientset) error {
-	/*
-		{
-			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
-			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
-		},
+	/* data:
+	{
+		"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+		"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+	},
 	*/
+
 	for resourceName, resourceList := range data {
 		switch resourceName {
 		case "deployment":
 			typePlugin := krd.LoadedPlugins["deployment"]
-			symDeploymentClient, err := typePlugin.Lookup("KubeDeploymentClient")
-			if err != nil {
-				return pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin client")
-			}
 
-			deploymentClient, ok := symDeploymentClient.(krd.KubeResourceClient)
-			if !ok {
-				return pkgerrors.New("Error loading " + resourceName + " plugin client")
+			symDeleteResourceFunc, err := typePlugin.Lookup("DeleteResource")
+			if err != nil {
+				return pkgerrors.Wrap(err, "Error fetching "+resourceName+" plugin")
 			}
 
 			for _, deploymentName := range resourceList {
-				err = deploymentClient.DeleteResource(deploymentName, namespace, kubeclient)
+				log.Println("Deleting deployment: " + deploymentName)
+
+				err = symDeleteResourceFunc.(func(string, string, *kubernetes.Clientset) error)(
+					deploymentName, namespace, kubeclient)
 				if err != nil {
 					return pkgerrors.Wrap(err, "Error destroying "+deploymentName)
 				}
@@ -235,18 +187,17 @@ var DestroyVNF = func(data map[string][]string, namespace string, kubeclient *ku
 
 		case "service":
 			typePlugin := krd.LoadedPlugins["service"]
-			symServiceClient, err := typePlugin.Lookup("KubeServiceClient")
-			if err != nil {
-				return pkgerrors.Wrap(err, "Error fetching "+resourceName+"plugin client")
-			}
 
-			serviceClient, ok := symServiceClient.(krd.KubeResourceClient)
-			if !ok {
-				return pkgerrors.New("Error loading " + resourceName + " plugin client")
+			symDeleteResourceFunc, err := typePlugin.Lookup("DeleteResource")
+			if err != nil {
+				return pkgerrors.Wrap(err, "Error fetching "+resourceName+" plugin")
 			}
 
 			for _, serviceName := range resourceList {
-				err = serviceClient.DeleteResource(serviceName, namespace, kubeclient)
+				log.Println("Deleting service: " + serviceName)
+
+				err = symDeleteResourceFunc.(func(string, string, *kubernetes.Clientset) error)(
+					serviceName, namespace, kubeclient)
 				if err != nil {
 					return pkgerrors.Wrap(err, "Error destroying "+serviceName)
 				}
@@ -313,8 +264,11 @@ func DeSerializeMap(serialData string) (map[string][]string, error) {
 			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
 		}
 	*/
-	var result map[string][]string
-	json.Unmarshal([]byte(serialData), result)
+	result := make(map[string][]string)
+	err := json.Unmarshal([]byte(serialData), &result)
+	if err != nil {
+		return nil, err
+	}
 
 	return result, nil
 }

@@ -158,7 +158,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		VNFID:         externalVNFID,
 		CloudRegionID: resource.CloudRegionID,
 		Namespace:     resource.Namespace,
-		VNFComponents: VNFcomponentList,
+		VNFComponents: resourceNameMap,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -242,7 +242,8 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// "{"deployment":<>,"service":<>}"
+	// key: cloud1-default-uuid
+	// value: "{"deployment":<>,"service":<>}"
 	serializedResourceNameMap, found, err := db.DBconn.ReadEntry(internalVNFID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -362,40 +363,40 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	namespace := vars["namespace"]         // default
 	externalVNFID := vars["externalVNFID"] // uuid
 
-	//cloudregion1-testnamespace-1
-	//cloudregion1-testnamespace-1-deployName|cloudregion1-testnamespace-1-serviceName"
-
 	// cloud1-default-uuid
 	internalVNFID := cloudRegionID + "-" + namespace + "-" + externalVNFID
 
-	deployname := ""
-	servicename := ""
-
-	name, found, err := db.DBconn.ReadEntry(internalVNFID)
+	// key: cloud1-default-uuid
+	// value: "{"deployment":<>,"service":<>}"
+	serializedResourceNameMap, found, err := db.DBconn.ReadEntry(internalVNFID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if found == false {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	if len(name) > 0 {
-		deployname = strings.Split(name, "|")[0]
-		servicename = strings.Split(name, "|")[1]
-
-		deployname = strings.Split(deployname, internalVNFID)[1][1:]
-		servicename = strings.Split(servicename, internalVNFID)[1][1:]
+	/*
+		{
+			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+		},
+	*/
+	deserializedResourceNameMap, err := csarparser.DeSerializeMap(serializedResourceNameMap)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Get VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
 	}
-
-	var VNFcomponentList []string
-
-	// TODO: Change this
-	VNFcomponentList = append(VNFcomponentList, deployname, servicename)
 
 	resp := GetVnfResponse{
 		VNFID:         externalVNFID,
 		CloudRegionID: cloudRegionID,
 		Namespace:     namespace,
-		VNFComponents: VNFcomponentList,
+		VNFComponents: deserializedResourceNameMap,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

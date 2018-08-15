@@ -15,27 +15,51 @@ import (
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
-// KubeDeploymentClient is a concrete implementaton of DeploymentInterface and KubeResourceClient
-type KubeDeploymentClient struct {
-	krd.KubeResourceClient
-}
-
 // CreateResource object in a specific Kubernetes Deployment
-func (d *KubeDeploymentClient) CreateResource(deployment *appsV1.Deployment, namespace string, kubeclient *kubernetes.Clientset) (string, error) {
-	if namespace == "" {
-		namespace = "default"
+func CreateResource(kubedata *krd.GenericKubeResourceData, kubeclient *kubernetes.Clientset) (string, error) {
+	if kubedata.Namespace == "" {
+		kubedata.Namespace = "default"
 	}
 
-	result, err := kubeclient.AppsV1().Deployments(namespace).Create(deployment)
-	if err != nil {
-		return "", pkgerrors.Wrap(err, "Create Deployment error")
-	}
+	if _, err := os.Stat(kubedata.YamlFilePath); err == nil {
+		log.Println("Reading deployment YAML")
 
-	return result.GetObjectMeta().GetName(), nil
+		rawBytes, err := ioutil.ReadFile(kubedata.YamlFilePath)
+		if err != nil {
+			return "", pkgerrors.Wrap(err, "Deployment YAML file read error")
+		}
+
+		log.Println("Decoding deployment YAML")
+
+		decode := scheme.Codecs.UniversalDeserializer().Decode
+		obj, _, err := decode(rawBytes, nil, nil)
+		if err != nil {
+			return "", pkgerrors.Wrap(err, "Deserialize deployment error")
+		}
+
+		switch o := obj.(type) {
+		case *appsV1.Deployment:
+			kubedata.DeploymentData = o
+		}
+
+		// cloud1-default-uuid-sisedeploy
+		internalDeploymentName := kubedata.InternalVNFID + "-" + kubedata.DeploymentData.Name
+
+		kubedata.DeploymentData.Namespace = kubedata.Namespace
+		kubedata.DeploymentData.Name = internalDeploymentName
+
+		result, err := kubeclient.AppsV1().Deployments(kubedata.Namespace).Create(kubedata.DeploymentData)
+		if err != nil {
+			return "", pkgerrors.Wrap(err, "Create Deployment error")
+		}
+
+		return result.GetObjectMeta().GetName(), nil
+	}
+	return "", pkgerrors.New("File " + kubedata.YamlFilePath + " not found")
 }
 
 // ListResources of existing deployments hosted in a specific Kubernetes Deployment
-func (d *KubeDeploymentClient) ListResources(limit int64, namespace string, kubeclient *kubernetes.Clientset) (*[]string, error) {
+func ListResources(limit int64, namespace string, kubeclient *kubernetes.Clientset) (*[]string, error) {
 	if namespace == "" {
 		namespace = "default"
 	}
@@ -62,13 +86,15 @@ func (d *KubeDeploymentClient) ListResources(limit int64, namespace string, kube
 }
 
 // DeleteResource existing deployments hosting in a specific Kubernetes Deployment
-func (d *KubeDeploymentClient) DeleteResource(internalVNFID string, namespace string, kubeclient *kubernetes.Clientset) error {
+func DeleteResource(name string, namespace string, kubeclient *kubernetes.Clientset) error {
 	if namespace == "" {
 		namespace = "default"
 	}
 
+	log.Println("Deleting deployment: " + name)
+
 	deletePolicy := metaV1.DeletePropagationForeground
-	err := kubeclient.AppsV1().Deployments(namespace).Delete(internalVNFID, &metaV1.DeleteOptions{
+	err := kubeclient.AppsV1().Deployments(namespace).Delete(name, &metaV1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	})
 
@@ -80,7 +106,7 @@ func (d *KubeDeploymentClient) DeleteResource(internalVNFID string, namespace st
 }
 
 // GetResource existing deployment hosting in a specific Kubernetes Deployment
-func (d *KubeDeploymentClient) GetResource(internalVNFID string, namespace string, kubeclient *kubernetes.Clientset) (string, error) {
+func GetResource(name string, namespace string, kubeclient *kubernetes.Clientset) (string, error) {
 	if namespace == "" {
 		namespace = "default"
 	}
@@ -97,60 +123,9 @@ func (d *KubeDeploymentClient) GetResource(internalVNFID string, namespace strin
 	}
 
 	for _, deployment := range list.Items {
-		if deployment.Name == internalVNFID {
-			return internalVNFID, nil
+		if deployment.Name == name {
+			return name, nil
 		}
 	}
 	return "", nil
-}
-
-// KubeDeploymentData is a concrete implemetation of KubeResourceData inteface
-type KubeDeploymentData struct {
-	DeploymentData []byte
-	Deployment     *appsV1.Deployment
-	krd.KubeResourceData
-}
-
-func CreateKubeData() KubeDeploymentData {
-	var res KubeDeploymentData
-	return res
-}
-
-// ReadYAML reads deployment.yaml and stores in KubeDeploymentData struct
-func (c *KubeDeploymentData) ReadYAML(yamlFilePath string) error {
-	if _, err := os.Stat(yamlFilePath); err == nil {
-		log.Println("Reading deployment YAML")
-		rawBytes, err := ioutil.ReadFile(yamlFilePath)
-		if err != nil {
-			return pkgerrors.Wrap(err, "Deployment YAML file read error")
-		}
-
-		c.DeploymentData = rawBytes
-
-		err = c.ParseYAML()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ParseYAML retrieves the deployment YAML file from a CSAR
-func (c *KubeDeploymentData) ParseYAML() error {
-	if c.DeploymentData != nil {
-		log.Println("Decoding deployment YAML")
-
-		decode := scheme.Codecs.UniversalDeserializer().Decode
-		obj, _, err := decode(c.DeploymentData, nil, nil)
-		if err != nil {
-			return pkgerrors.Wrap(err, "Deserialize deployment error")
-		}
-
-		switch o := obj.(type) {
-		case *appsV1.Deployment:
-			c.Deployment = o
-			return nil
-		}
-	}
-	return nil
 }

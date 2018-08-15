@@ -23,6 +23,7 @@ import (
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
+// CheckEnvVariables checks for required Environment variables
 func CheckEnvVariables() error {
 	if os.Getenv("CSAR_DIR") == "" {
 		return pkgerrors.New("environment variable CSAR_DIR not set")
@@ -36,12 +37,18 @@ func CheckEnvVariables() error {
 		return pkgerrors.New("enviromment variable DATABASE_TYPE not set")
 	}
 
+	if os.Getenv("DATABASE_IP") == "" {
+		return pkgerrors.New("enviromment variable DATABASE_IP not set")
+	}
+
 	if os.Getenv("PLUGINS_DIR") == "" {
 		return pkgerrors.New("enviromment variable PLUGINS_DIR not set")
 	}
 	return nil
 }
 
+// CheckDatabaseConnection checks if the database is up and running and
+// plugin can talk to it
 func CheckDatabaseConnection() error {
 	err := db.CreateDBClient(os.Getenv("DATABASE_TYPE"))
 	if err != nil {
@@ -60,6 +67,7 @@ func CheckDatabaseConnection() error {
 	return nil
 }
 
+// LoadPlugins loads all the compiled .so plugins
 func LoadPlugins() error {
 	p, err := plugin.Open(os.Getenv("PLUGINS_DIR") + "/deployment/deployment.so")
 	if err != nil {
