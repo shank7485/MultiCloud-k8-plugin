@@ -16,6 +16,7 @@ package api
 import (
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
+	"io/ioutil"
 	"os"
 	"plugin"
 
@@ -69,20 +70,38 @@ func CheckDatabaseConnection() error {
 
 // LoadPlugins loads all the compiled .so plugins
 func LoadPlugins() error {
-	p, err := plugin.Open(os.Getenv("PLUGINS_DIR") + "/deployment/deployment.so")
+	pluginDir := os.Getenv("PLUGINS_DIR")
+
+	// ["deployment", "service"]
+	pluginSubDirs, err := ioutil.ReadDir(pluginDir)
 	if err != nil {
 		return pkgerrors.Cause(err)
 	}
 
-	krd.LoadedPlugins["deployment"] = p
+	for _, pluginSubDir := range pluginSubDirs {
+		// "deployment", "service"
+		subDirPath := pluginDir + "/" + pluginSubDir.Name()
 
-	p, err = plugin.Open(os.Getenv("PLUGINS_DIR") + "/service/service.so")
-	if err != nil {
-		return pkgerrors.Cause(err)
+		// ["deployment.so"]
+		pluginSOFiles, err := ioutil.ReadDir(subDirPath)
+		if err != nil {
+			return pkgerrors.Cause(err)
+		}
+
+		for _, pluginSOFile := range pluginSOFiles {
+			// Read only .so files
+			if pluginSOFile.Name()[len(pluginSOFile.Name())-2:] == "so" {
+				pluginSOFilePath := subDirPath + "/" + pluginSOFile.Name()
+
+				p, err := plugin.Open(pluginSOFilePath)
+				if err != nil {
+					return pkgerrors.Cause(err)
+				}
+				// krd.LoadedPlugins["deployment"] = p
+				krd.LoadedPlugins[pluginSubDir.Name()] = p
+			}
+		}
 	}
-
-	krd.LoadedPlugins["service"] = p
-
 	return nil
 }
 
