@@ -14,7 +14,6 @@ limitations under the License.
 package api
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"plugin"
