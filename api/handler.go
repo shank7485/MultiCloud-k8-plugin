@@ -93,21 +93,6 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	present, err := krd.IsNamespaceExists(resource.Namespace, &kubeclient)
-	if err != nil {
-		werr := pkgerrors.Wrap(err, "Check namespace exists error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if present == false {
-		err = krd.CreateNamespace(resource.Namespace, &kubeclient)
-		if err != nil {
-			werr := pkgerrors.Wrap(err, "Create new namespace error")
-			http.Error(w, werr.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
 
 	/*
 		uuid,

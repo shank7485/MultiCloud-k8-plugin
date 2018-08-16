@@ -18,14 +18,10 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 
-	coreV1 "k8s.io/api/core/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	// coreV1Interface "k8s.io/client-go/kubernetes/typed/core/v1"
 )
-
-// APIVersion supported for the Kubernetes Reference Deployment
-const APIVersion = "apps/v1"
 
 // GetKubeClient loads the Kubernetes configuation values stored into the local configuration file
 var GetKubeClient = func(configPath string) (kubernetes.Clientset, error) {
@@ -46,41 +42,4 @@ var GetKubeClient = func(configPath string) (kubernetes.Clientset, error) {
 	}
 
 	return *clientset, nil
-}
-
-// CreateNamespace is used to create a new Namespace
-func CreateNamespace(namespace string, client *kubernetes.Clientset) error {
-	namespaceStruct := &coreV1.Namespace{
-		ObjectMeta: metaV1.ObjectMeta{
-			Name: namespace,
-		},
-	}
-	_, err := client.CoreV1().Namespaces().Create(namespaceStruct)
-	if err != nil {
-		return pkgerrors.Wrap(err, "Create Namespace error")
-	}
-	return nil
-}
-
-// IsNamespaceExists is used to check if a given namespace actually exists in Kubernetes
-func IsNamespaceExists(namespace string, client *kubernetes.Clientset) (bool, error) {
-	ns, err := client.CoreV1().Namespaces().Get(namespace, metaV1.GetOptions{})
-	if err != nil {
-		return false, pkgerrors.Wrap(err, "Get Namespace list error")
-	}
-	return ns != nil, nil
-}
-
-// DeleteNamespace is used to delete a namespace
-func DeleteNamespace(namespace string, client *kubernetes.Clientset) error {
-	deletePolicy := metaV1.DeletePropagationForeground
-
-	err := client.CoreV1().Namespaces().Delete(namespace, &metaV1.DeleteOptions{
-		PropagationPolicy: &deletePolicy,
-	})
-
-	if err != nil {
-		return pkgerrors.Wrap(err, "Delete Namespace error")
-	}
-	return nil
 }

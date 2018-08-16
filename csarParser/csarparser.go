@@ -30,6 +30,35 @@ import (
 
 // CreateVNF reads the CSAR files from the files system and creates them one by one
 var CreateVNF = func(csarID string, cloudRegionID string, namespace string, kubeclient *kubernetes.Clientset) (string, map[string][]string, error) {
+	namespacePlugin, ok := krd.LoadedPlugins["namespace"]
+	if !ok {
+		return "", nil, pkgerrors.New("No plugin for namespace resource found")
+	}
+
+	symGetNamespaceFunc, err := namespacePlugin.Lookup("GetResource")
+	if err != nil {
+		return "", nil, pkgerrors.Wrap(err, "Error fetching namespace plugin")
+	}
+
+	present, err := symGetNamespaceFunc.(func(string, *kubernetes.Clientset) (bool, error))(
+		namespace, kubeclient)
+	if err != nil {
+		return "", nil, pkgerrors.Wrap(err, "Error in plugin namespace plugin")
+	}
+
+	if present == false {
+		symGetNamespaceFunc, err := namespacePlugin.Lookup("CreateResource")
+		if err != nil {
+			return "", nil, pkgerrors.Wrap(err, "Error fetching namespace plugin")
+		}
+
+		err = symGetNamespaceFunc.(func(string, *kubernetes.Clientset) error)(
+			namespace, kubeclient)
+		if err != nil {
+			return "", nil, pkgerrors.Wrap(err, "Error creating "+namespace+" namespace")
+		}
+	}
+
 	var path string
 
 	// uuid
