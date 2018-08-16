@@ -125,6 +125,8 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println(serializedResourceNameMap)
+
 	// key: cloud1-default-uuid
 	// value: "{"deployment":<>,"service":<>}"
 	err = db.DBconn.CreateEntry(internalVNFID, serializedResourceNameMap)
@@ -133,11 +135,6 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	var VNFcomponentList []string
-
-	// TODO: Change this
-	VNFcomponentList = append(VNFcomponentList, "")
 
 	resp := CreateVnfResponse{
 		VNFID:         externalVNFID,

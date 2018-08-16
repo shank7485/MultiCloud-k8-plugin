@@ -23,20 +23,6 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type mockCSARFile struct{}
-
-func (c *mockCSARFile) Download(fileName string, url string) error {
-	return nil
-}
-
-func (c *mockCSARFile) Unzip(filepath string) error {
-	return nil
-}
-
-func (c *mockCSARFile) Delete(path string) error {
-	return nil
-}
-
 func TestReadDeploymentYAML(t *testing.T) {
 	t.Run("Successfully read deployment YAML", func(t *testing.T) {
 		expected := &appsV1.Deployment{
