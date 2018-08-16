@@ -14,11 +14,13 @@ limitations under the License.
 package api
 
 import (
+	"os"
+	"path/filepath"
+	"plugin"
+	"strings"
+
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
-	"io/ioutil"
-	"os"
-	"plugin"
 
 	"github.com/shank7485/k8-plugin-multicloud/db"
 	"github.com/shank7485/k8-plugin-multicloud/krd"
@@ -26,25 +28,13 @@ import (
 
 // CheckEnvVariables checks for required Environment variables
 func CheckEnvVariables() error {
-	if os.Getenv("CSAR_DIR") == "" {
-		return pkgerrors.New("environment variable CSAR_DIR not set")
+	envList := []string{"CSAR_DIR", "KUBE_CONFIG_DIR", "DATABASE_TYPE", "DATABASE_IP"}
+	for _, env := range envList {
+		if _, ok := os.LookupEnv(env); !ok {
+			return pkgerrors.New("environment variable " + env + " not set")
+		}
 	}
 
-	if os.Getenv("KUBE_CONFIG_DIR") == "" {
-		return pkgerrors.New("enviromment variable KUBE_CONFIG_DIR not set")
-	}
-
-	if os.Getenv("DATABASE_TYPE") == "" {
-		return pkgerrors.New("enviromment variable DATABASE_TYPE not set")
-	}
-
-	if os.Getenv("DATABASE_IP") == "" {
-		return pkgerrors.New("enviromment variable DATABASE_IP not set")
-	}
-
-	if os.Getenv("PLUGINS_DIR") == "" {
-		return pkgerrors.New("enviromment variable PLUGINS_DIR not set")
-	}
 	return nil
 }
 
@@ -70,38 +60,24 @@ func CheckDatabaseConnection() error {
 
 // LoadPlugins loads all the compiled .so plugins
 func LoadPlugins() error {
-	pluginDir := os.Getenv("PLUGINS_DIR")
-
-	// ["deployment", "service"]
-	pluginSubDirs, err := ioutil.ReadDir(pluginDir)
-	if err != nil {
-		return pkgerrors.Cause(err)
+	pluginsDir, ok := os.LookupEnv("PLUGINS_DIR")
+	if !ok {
+		pluginsDir, _ = filepath.Abs(filepath.Dir(os.Args[0]))
 	}
-
-	for _, pluginSubDir := range pluginSubDirs {
-		// "deployment", "service"
-		subDirPath := pluginDir + "/" + pluginSubDir.Name()
-
-		// ["deployment.so"]
-		pluginSOFiles, err := ioutil.ReadDir(subDirPath)
-		if err != nil {
-			return pkgerrors.Cause(err)
-		}
-
-		for _, pluginSOFile := range pluginSOFiles {
-			// Read only .so files
-			if pluginSOFile.Name()[len(pluginSOFile.Name())-2:] == "so" {
-				pluginSOFilePath := subDirPath + "/" + pluginSOFile.Name()
-
-				p, err := plugin.Open(pluginSOFilePath)
-				if err != nil {
-					return pkgerrors.Cause(err)
-				}
-				// krd.LoadedPlugins["deployment"] = p
-				krd.LoadedPlugins[pluginSubDir.Name()] = p
+	err := filepath.Walk(pluginsDir, func(path string, info os.FileInfo, err error) error {
+		if strings.Contains(path, ".so") {
+			p, err := plugin.Open(path)
+			if err != nil {
+				return pkgerrors.Cause(err)
 			}
+			krd.LoadedPlugins[info.Name()] = p
 		}
+		return err
+	})
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
 

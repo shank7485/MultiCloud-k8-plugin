@@ -2,9 +2,10 @@ package main
 
 import (
 	"io/ioutil"
-	"k8s.io/client-go/kubernetes"
 	"log"
 	"os"
+
+	"k8s.io/client-go/kubernetes"
 
 	pkgerrors "github.com/pkg/errors"
 
@@ -21,40 +22,38 @@ func CreateResource(kubedata *krd.GenericKubeResourceData, kubeclient *kubernete
 		kubedata.Namespace = "default"
 	}
 
-	if _, err := os.Stat(kubedata.YamlFilePath); err == nil {
-		log.Println("Reading service YAML")
-
-		rawBytes, err := ioutil.ReadFile(kubedata.YamlFilePath)
-		if err != nil {
-			return "", pkgerrors.Wrap(err, "Service YAML file read error")
-		}
-
-		log.Println("Decoding service YAML")
-
-		decode := scheme.Codecs.UniversalDeserializer().Decode
-		obj, _, err := decode(rawBytes, nil, nil)
-		if err != nil {
-			return "", pkgerrors.Wrap(err, "Deserialize service error")
-		}
-
-		switch o := obj.(type) {
-		case *coreV1.Service:
-			kubedata.ServiceData = o
-		}
-
-		// cloud1-default-uuid-siseservice
-		internalServiceName := kubedata.InternalVNFID + "-" + kubedata.ServiceData.Name
-
-		kubedata.ServiceData.Namespace = kubedata.Namespace
-		kubedata.ServiceData.Name = internalServiceName
-
-		result, err := kubeclient.CoreV1().Services(kubedata.Namespace).Create(kubedata.ServiceData)
-		if err != nil {
-			return "", pkgerrors.Wrap(err, "Create Service error")
-		}
-		return result.GetObjectMeta().GetName(), nil
+	if _, err := os.Stat(kubedata.YamlFilePath); err != nil {
+		return "", pkgerrors.New("File " + kubedata.YamlFilePath + " not found")
 	}
-	return "", pkgerrors.New("File " + kubedata.YamlFilePath + " not found")
+
+	log.Println("Reading service YAML")
+	rawBytes, err := ioutil.ReadFile(kubedata.YamlFilePath)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Service YAML file read error")
+	}
+
+	log.Println("Decoding service YAML")
+	decode := scheme.Codecs.UniversalDeserializer().Decode
+	obj, _, err := decode(rawBytes, nil, nil)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Deserialize service error")
+	}
+
+	switch o := obj.(type) {
+	case *coreV1.Service:
+		kubedata.ServiceData = o
+	default:
+		return "", pkgerrors.New(kubedata.YamlFilePath + " contains another resource different than Service")
+	}
+
+	kubedata.ServiceData.Namespace = kubedata.Namespace
+	kubedata.ServiceData.Name = kubedata.InternalVNFID + "-" + kubedata.ServiceData.Name
+
+	result, err := kubeclient.CoreV1().Services(kubedata.Namespace).Create(kubedata.ServiceData)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Create Service error")
+	}
+	return result.GetObjectMeta().GetName(), nil
 }
 
 // ListResources of existing deployments hosted in a specific Kubernetes Deployment

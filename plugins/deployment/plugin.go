@@ -2,9 +2,10 @@ package main
 
 import (
 	"io/ioutil"
-	"k8s.io/client-go/kubernetes"
 	"log"
 	"os"
+
+	"k8s.io/client-go/kubernetes"
 
 	pkgerrors "github.com/pkg/errors"
 
@@ -21,41 +22,39 @@ func CreateResource(kubedata *krd.GenericKubeResourceData, kubeclient *kubernete
 		kubedata.Namespace = "default"
 	}
 
-	if _, err := os.Stat(kubedata.YamlFilePath); err == nil {
-		log.Println("Reading deployment YAML")
-
-		rawBytes, err := ioutil.ReadFile(kubedata.YamlFilePath)
-		if err != nil {
-			return "", pkgerrors.Wrap(err, "Deployment YAML file read error")
-		}
-
-		log.Println("Decoding deployment YAML")
-
-		decode := scheme.Codecs.UniversalDeserializer().Decode
-		obj, _, err := decode(rawBytes, nil, nil)
-		if err != nil {
-			return "", pkgerrors.Wrap(err, "Deserialize deployment error")
-		}
-
-		switch o := obj.(type) {
-		case *appsV1.Deployment:
-			kubedata.DeploymentData = o
-		}
-
-		// cloud1-default-uuid-sisedeploy
-		internalDeploymentName := kubedata.InternalVNFID + "-" + kubedata.DeploymentData.Name
-
-		kubedata.DeploymentData.Namespace = kubedata.Namespace
-		kubedata.DeploymentData.Name = internalDeploymentName
-
-		result, err := kubeclient.AppsV1().Deployments(kubedata.Namespace).Create(kubedata.DeploymentData)
-		if err != nil {
-			return "", pkgerrors.Wrap(err, "Create Deployment error")
-		}
-
-		return result.GetObjectMeta().GetName(), nil
+	if _, err := os.Stat(kubedata.YamlFilePath); err != nil {
+		return "", pkgerrors.New("File " + kubedata.YamlFilePath + " not found")
 	}
-	return "", pkgerrors.New("File " + kubedata.YamlFilePath + " not found")
+
+	log.Println("Reading deployment YAML")
+	rawBytes, err := ioutil.ReadFile(kubedata.YamlFilePath)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Deployment YAML file read error")
+	}
+
+	log.Println("Decoding deployment YAML")
+	decode := scheme.Codecs.UniversalDeserializer().Decode
+	obj, _, err := decode(rawBytes, nil, nil)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Deserialize deployment error")
+	}
+
+	switch o := obj.(type) {
+	case *appsV1.Deployment:
+		kubedata.DeploymentData = o
+	default:
+		return "", pkgerrors.New(kubedata.YamlFilePath + " contains another resource different than Deployment")
+	}
+
+	kubedata.DeploymentData.Namespace = kubedata.Namespace
+	kubedata.DeploymentData.Name = kubedata.InternalVNFID + "-" + kubedata.DeploymentData.Name
+
+	result, err := kubeclient.AppsV1().Deployments(kubedata.Namespace).Create(kubedata.DeploymentData)
+	if err != nil {
+		return "", pkgerrors.Wrap(err, "Create Deployment error")
+	}
+
+	return result.GetObjectMeta().GetName(), nil
 }
 
 // ListResources of existing deployments hosted in a specific Kubernetes Deployment
