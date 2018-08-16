@@ -50,97 +50,52 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string, kube
 
 	for _, resource := range seqFile.ResourceTypePathMap {
 		for resourceName, resourceFileNames := range resource {
-			switch resourceName {
-			case "deployment":
-				// Load/Use Deployment data/client
-				var deployNameList []string
+			// Load/Use Deployment data/client
 
-				for _, filename := range resourceFileNames {
-					path = csarDirPath + "/" + filename
+			var resourceNameList []string
 
-					_, err = os.Stat(path)
-					if os.IsNotExist(err) {
-						return "", nil, pkgerrors.New("File " + path + "does not exists")
-					}
+			for _, filename := range resourceFileNames {
+				path = csarDirPath + "/" + filename
 
-					log.Println("Processing file: " + path)
-
-					genericKubeData := &krd.GenericKubeResourceData{
-						YamlFilePath:  path,
-						Namespace:     namespace,
-						InternalVNFID: internalVNFID,
-					}
-
-					typePlugin := krd.LoadedPlugins["deployment"]
-
-					symCreateResourceFunc, err := typePlugin.Lookup("CreateResource")
-					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+" plugin")
-					}
-
-					// cloud1-default-uuid-sisedeploy
-					internalDeploymentName, err := symCreateResourceFunc.(func(*krd.GenericKubeResourceData, *kubernetes.Clientset) (string, error))(
-						genericKubeData, kubeclient)
-					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error in plugin "+resourceName+" plugin")
-					}
-
-					// ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
-					deployNameList = append(deployNameList, internalDeploymentName)
-
-					/*
-						{
-							"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
-						}
-					*/
-					resourceYAMLNameMap[resourceName] = deployNameList
+				_, err = os.Stat(path)
+				if os.IsNotExist(err) {
+					return "", nil, pkgerrors.New("File " + path + "does not exists")
 				}
-			case "service":
-				// Load/Use Service data/client
-				var serviceNameList []string
 
-				for _, filename := range resourceFileNames {
-					path = csarDirPath + "/" + filename
+				log.Println("Processing file: " + path)
 
-					_, err = os.Stat(path)
-					if os.IsNotExist(err) {
-						return "", nil, pkgerrors.New("File " + path + "does not exists")
-					}
-
-					log.Println("Processing file: " + path)
-
-					genericKubeData := &krd.GenericKubeResourceData{
-						YamlFilePath:  path,
-						Namespace:     namespace,
-						InternalVNFID: internalVNFID,
-					}
-
-					typePlugin := krd.LoadedPlugins["service"]
-
-					symCreateResourceFunc, err := typePlugin.Lookup("CreateResource")
-					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+" plugin")
-					}
-
-					// cloud1-default-uuid-siseservice
-					internalServiceName, err := symCreateResourceFunc.(func(*krd.GenericKubeResourceData, *kubernetes.Clientset) (string, error))(
-						genericKubeData, kubeclient)
-					if err != nil {
-						return "", nil, pkgerrors.Wrap(err, "Error in plugin "+resourceName+" plugin")
-					}
-
-					// ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
-					serviceNameList = append(serviceNameList, internalServiceName)
-
-					/*
-						{
-							"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
-						}
-					*/
-					resourceYAMLNameMap[resourceName] = serviceNameList
+				genericKubeData := &krd.GenericKubeResourceData{
+					YamlFilePath:  path,
+					Namespace:     namespace,
+					InternalVNFID: internalVNFID,
 				}
-			default:
-				return "", nil, pkgerrors.New(resourceName + " resource type not supported.")
+
+				typePlugin, ok := krd.LoadedPlugins[resourceName]
+				if !ok {
+					return "", nil, pkgerrors.New("No plugin for resource " + resourceName + " found")
+				}
+
+				symCreateResourceFunc, err := typePlugin.Lookup("CreateResource")
+				if err != nil {
+					return "", nil, pkgerrors.Wrap(err, "Error fetching "+resourceName+" plugin")
+				}
+
+				// cloud1-default-uuid-sisedeploy
+				internalResourceName, err := symCreateResourceFunc.(func(*krd.GenericKubeResourceData, *kubernetes.Clientset) (string, error))(
+					genericKubeData, kubeclient)
+				if err != nil {
+					return "", nil, pkgerrors.Wrap(err, "Error in plugin "+resourceName+" plugin")
+				}
+
+				// ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+				resourceNameList = append(resourceNameList, internalResourceName)
+
+				/*
+					{
+						"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+					}
+				*/
+				resourceYAMLNameMap[resourceName] = resourceNameList
 			}
 		}
 	}
@@ -166,46 +121,28 @@ var DestroyVNF = func(data map[string][]string, namespace string, kubeclient *ku
 	*/
 
 	for resourceName, resourceList := range data {
-		switch resourceName {
-		case "deployment":
-			typePlugin := krd.LoadedPlugins["deployment"]
+		typePlugin, ok := krd.LoadedPlugins[resourceName]
+		if !ok {
+			return pkgerrors.New("No plugin for resource " + resourceName + " found")
+		}
 
-			symDeleteResourceFunc, err := typePlugin.Lookup("DeleteResource")
+		symDeleteResourceFunc, err := typePlugin.Lookup("DeleteResource")
+		if err != nil {
+			return pkgerrors.Wrap(err, "Error fetching "+resourceName+" plugin")
+		}
+
+		for _, resourceName := range resourceList {
+
+			log.Println("Deleting resource: " + resourceName)
+
+			err = symDeleteResourceFunc.(func(string, string, *kubernetes.Clientset) error)(
+				resourceName, namespace, kubeclient)
 			if err != nil {
-				return pkgerrors.Wrap(err, "Error fetching "+resourceName+" plugin")
+				return pkgerrors.Wrap(err, "Error destroying "+resourceName)
 			}
-
-			for _, deploymentName := range resourceList {
-				log.Println("Deleting deployment: " + deploymentName)
-
-				err = symDeleteResourceFunc.(func(string, string, *kubernetes.Clientset) error)(
-					deploymentName, namespace, kubeclient)
-				if err != nil {
-					return pkgerrors.Wrap(err, "Error destroying "+deploymentName)
-				}
-			}
-
-		case "service":
-			typePlugin := krd.LoadedPlugins["service"]
-
-			symDeleteResourceFunc, err := typePlugin.Lookup("DeleteResource")
-			if err != nil {
-				return pkgerrors.Wrap(err, "Error fetching "+resourceName+" plugin")
-			}
-
-			for _, serviceName := range resourceList {
-				log.Println("Deleting service: " + serviceName)
-
-				err = symDeleteResourceFunc.(func(string, string, *kubernetes.Clientset) error)(
-					serviceName, namespace, kubeclient)
-				if err != nil {
-					return pkgerrors.Wrap(err, "Error destroying "+serviceName)
-				}
-			}
-		default:
-			return pkgerrors.New("Error unsupported " + resourceName)
 		}
 	}
+
 	return nil
 }
 
