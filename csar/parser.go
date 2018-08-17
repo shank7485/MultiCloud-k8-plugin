@@ -69,11 +69,11 @@ var CreateVNF = func(csarID string, cloudRegionID string, namespace string, kube
 	internalVNFID := cloudRegionID + "-" + namespace + "-" + externalVNFID
 
 	csarDirPath := os.Getenv("CSAR_DIR") + "/" + csarID
-	sequenceYAMLPath := csarDirPath + "/sequence.yaml"
+	metadataYAMLPath := csarDirPath + "/metadata.yaml"
 
-	seqFile, err := ReadSequenceFile(sequenceYAMLPath)
+	seqFile, err := ReadMetadataFile(metadataYAMLPath)
 	if err != nil {
-		return "", nil, pkgerrors.Wrap(err, "Error while reading Sequence File: "+sequenceYAMLPath)
+		return "", nil, pkgerrors.Wrap(err, "Error while reading Metadata File: "+metadataYAMLPath)
 	}
 
 	resourceYAMLNameMap := make(map[string][]string)
@@ -176,25 +176,25 @@ var DestroyVNF = func(data map[string][]string, namespace string, kubeclient *ku
 	return nil
 }
 
-// SequenceFile stores the sequence of execution
-type SequenceFile struct {
+// MetadataFile stores the metadata of execution
+type MetadataFile struct {
 	ResourceTypePathMap []map[string][]string `yaml:"resources"`
 }
 
-// ReadSequenceFile reads the sequence yaml to return the order or reads
-func ReadSequenceFile(yamlFilePath string) (SequenceFile, error) {
-	var seqFile SequenceFile
+// ReadMetadataFile reads the metadata yaml to return the order or reads
+func ReadMetadataFile(yamlFilePath string) (MetadataFile, error) {
+	var seqFile MetadataFile
 
 	if _, err := os.Stat(yamlFilePath); err == nil {
-		log.Println("Reading sequence YAML: " + yamlFilePath)
+		log.Println("Reading metadata YAML: " + yamlFilePath)
 		rawBytes, err := ioutil.ReadFile(yamlFilePath)
 		if err != nil {
-			return seqFile, pkgerrors.Wrap(err, "Sequence YAML file read error")
+			return seqFile, pkgerrors.Wrap(err, "Metadata YAML file read error")
 		}
 
 		err = yaml.Unmarshal(rawBytes, &seqFile)
 		if err != nil {
-			return seqFile, pkgerrors.Wrap(err, "Sequence YAML file read error")
+			return seqFile, pkgerrors.Wrap(err, "Metadata YAML file read error")
 		}
 	}
 
