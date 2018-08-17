@@ -1,10 +1,11 @@
 package krd
 
 import (
+	"plugin"
+
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"plugin"
 )
 
 // LoadedPlugins stores references to the stored plugins

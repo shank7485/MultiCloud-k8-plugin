@@ -26,7 +26,7 @@ import (
 	// "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/shank7485/k8-plugin-multicloud/csarparser"
+	"github.com/shank7485/k8-plugin-multicloud/csar"
 	"github.com/shank7485/k8-plugin-multicloud/db"
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
@@ -102,7 +102,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 		},
 		nil
 	*/
-	externalVNFID, resourceNameMap, err := csarparser.CreateVNF(resource.CsarID, resource.CloudRegionID, resource.Namespace, &kubeclient)
+	externalVNFID, resourceNameMap, err := csar.CreateVNF(resource.CsarID, resource.CloudRegionID, resource.Namespace, &kubeclient)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Read Kubernetes Data information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -118,7 +118,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	// krd.AddNetworkAnnotationsToPod(kubeData, resource.Networks)
 
 	// "{"deployment":<>,"service":<>}"
-	serializedResourceNameMap, err := csarparser.SerializeMap(resourceNameMap)
+	serializedResourceNameMap, err := csar.SerializeMap(resourceNameMap)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -243,14 +243,14 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
 		},
 	*/
-	deserializedResourceNameMap, err := csarparser.DeSerializeMap(serializedResourceNameMap)
+	deserializedResourceNameMap, err := csar.DeSerializeMap(serializedResourceNameMap)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = csarparser.DestroyVNF(deserializedResourceNameMap, namespace, &kubeclient)
+	err = csar.DestroyVNF(deserializedResourceNameMap, namespace, &kubeclient)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -367,7 +367,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
 		},
 	*/
-	deserializedResourceNameMap, err := csarparser.DeSerializeMap(serializedResourceNameMap)
+	deserializedResourceNameMap, err := csar.DeSerializeMap(serializedResourceNameMap)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)

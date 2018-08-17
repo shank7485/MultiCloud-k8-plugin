@@ -11,14 +11,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package csarparser
+package csar
 
 import (
 	"encoding/json"
 	"io/ioutil"
-	"k8s.io/client-go/kubernetes"
 	"log"
 	"os"
+
+	"k8s.io/client-go/kubernetes"
 
 	pkgerrors "github.com/pkg/errors"
 	"gopkg.in/yaml.v2"

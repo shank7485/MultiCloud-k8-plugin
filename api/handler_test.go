@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/shank7485/k8-plugin-multicloud/csarparser"
+	"github.com/shank7485/k8-plugin-multicloud/csar"
 	"github.com/shank7485/k8-plugin-multicloud/db"
 )
 
@@ -110,7 +110,7 @@ func TestVNFInstanceCreation(t *testing.T) {
 			return kubernetes.Clientset{}, nil
 		}
 
-		csarparser.CreateVNF = func(id string, r string, n string, kubeclient *kubernetes.Clientset) (string, map[string][]string, error) {
+		csar.CreateVNF = func(id string, r string, n string, kubeclient *kubernetes.Clientset) (string, map[string][]string, error) {
 			return "externaluuid", data, nil
 		}
 
@@ -192,7 +192,7 @@ func TestVNFInstanceDeletion(t *testing.T) {
 			return kubernetes.Clientset{}, nil
 		}
 
-		csarparser.DestroyVNF = func(d map[string][]string, n string, kubeclient *kubernetes.Clientset) error {
+		csar.DestroyVNF = func(d map[string][]string, n string, kubeclient *kubernetes.Clientset) error {
 			return nil
 		}
 
