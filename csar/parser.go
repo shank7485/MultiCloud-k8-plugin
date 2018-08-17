@@ -181,7 +181,7 @@ type MetadataFile struct {
 }
 
 // ReadMetadataFile reads the metadata yaml to return the order or reads
-func ReadMetadataFile(yamlFilePath string) (MetadataFile, error) {
+var ReadMetadataFile = func(yamlFilePath string) (MetadataFile, error) {
 	var seqFile MetadataFile
 
 	if _, err := os.Stat(yamlFilePath); err == nil {
