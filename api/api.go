@@ -14,27 +14,33 @@ limitations under the License.
 package api
 
 import (
+	"os"
+	"path/filepath"
+	"plugin"
+	"strings"
+
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
-	"os"
 
 	"github.com/shank7485/k8-plugin-multicloud/db"
+	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
-// CheckInitialSettings is used to check initial settings required to start api
-func CheckInitialSettings() error {
-	if os.Getenv("CSAR_DIR") == "" {
-		return pkgerrors.New("environment variable CSAR_DIR not set")
+// CheckEnvVariables checks for required Environment variables
+func CheckEnvVariables() error {
+	envList := []string{"CSAR_DIR", "KUBE_CONFIG_DIR", "DATABASE_TYPE", "DATABASE_IP"}
+	for _, env := range envList {
+		if _, ok := os.LookupEnv(env); !ok {
+			return pkgerrors.New("environment variable " + env + " not set")
+		}
 	}
 
-	if os.Getenv("KUBE_CONFIG_DIR") == "" {
-		return pkgerrors.New("enviromment variable KUBE_CONFIG_DIR not set")
-	}
+	return nil
+}
 
-	if os.Getenv("DATABASE_TYPE") == "" {
-		return pkgerrors.New("enviromment variable DATABASE_TYPE not set")
-	}
-
+// CheckDatabaseConnection checks if the database is up and running and
+// plugin can talk to it
+func CheckDatabaseConnection() error {
 	err := db.CreateDBClient(os.Getenv("DATABASE_TYPE"))
 	if err != nil {
 		return pkgerrors.Cause(err)
@@ -46,6 +52,49 @@ func CheckInitialSettings() error {
 	}
 
 	err = db.DBconn.CheckDatabase()
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+	return nil
+}
+
+// LoadPlugins loads all the compiled .so plugins
+func LoadPlugins() error {
+	pluginsDir, ok := os.LookupEnv("PLUGINS_DIR")
+	if !ok {
+		pluginsDir, _ = filepath.Abs(filepath.Dir(os.Args[0]))
+	}
+	err := filepath.Walk(pluginsDir, func(path string, info os.FileInfo, err error) error {
+		if strings.Contains(path, ".so") {
+
+			p, err := plugin.Open(path)
+			if err != nil {
+				return pkgerrors.Cause(err)
+			}
+			krd.LoadedPlugins[info.Name()[:len(info.Name())-3]] = p
+		}
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CheckInitialSettings is used to check initial settings required to start api
+func CheckInitialSettings() error {
+	err := CheckEnvVariables()
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
+	err = CheckDatabaseConnection()
+	if err != nil {
+		return pkgerrors.Cause(err)
+	}
+
+	err = LoadPlugins()
 	if err != nil {
 		return pkgerrors.Cause(err)
 	}
@@ -64,7 +113,7 @@ func NewRouter(kubeconfig string) (s *mux.Router) {
 	vnfInstanceHandler.HandleFunc("/{cloudRegionID}/{namespace}/{externalVNFID}", GetHandler).Methods("GET")
 
 	// (TODO): Fix update method
-	vnfInstanceHandler.HandleFunc("/{vnfInstanceId}", UpdateHandler).Methods("PUT")
+	// vnfInstanceHandler.HandleFunc("/{vnfInstanceId}", UpdateHandler).Methods("PUT")
 
 	return router
 }

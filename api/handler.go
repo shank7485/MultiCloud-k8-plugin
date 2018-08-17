@@ -23,39 +23,21 @@ import (
 
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/uuid"
+	// "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 
+	"github.com/shank7485/k8-plugin-multicloud/csar"
 	"github.com/shank7485/k8-plugin-multicloud/db"
 	"github.com/shank7485/k8-plugin-multicloud/krd"
-	"github.com/shank7485/k8-plugin-multicloud/csarParser"
 )
 
-// VNFInstanceService communicates the actions to Kubernetes deployment
-type VNFInstanceService struct {
-	Client krd.VNFInstanceClientInterface
-}
-
-// NewVNFInstanceService creates a client that comunicates with a Kuberentes Cluster
-func NewVNFInstanceService(kubeConfigPath string) (*VNFInstanceService, error) {
-	client, err := GetVNFClient(kubeConfigPath)
-	if err != nil {
-		return nil, err
-	}
-	return &VNFInstanceService{
-		Client: client,
-	}, nil
-}
-
 // GetVNFClient retrieve the client used to communicate with a Kubernetes Cluster
-var GetVNFClient = func(kubeConfigPath string) (krd.VNFInstanceClientInterface, error) {
-	var client krd.VNFInstanceClientInterface
-
-	client, err := krd.NewClient(kubeConfigPath)
+var GetVNFClient = func(kubeConfigPath string) (kubernetes.Clientset, error) {
+	client, err := krd.GetKubeClient(kubeConfigPath)
 	if err != nil {
-		return nil, err
+		return client, err
 	}
-	return client, err
+	return client, nil
 }
 
 func validateBody(body interface{}) error {
@@ -106,110 +88,59 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	// err := DownloadKubeConfigFromAAI(resource.CloudRegionID, os.Getenv("KUBE_CONFIG_DIR")
-	s, err := NewVNFInstanceService(os.Getenv("KUBE_CONFIG_DIR") + "/" + resource.CloudRegionID)
+	kubeclient, err := GetVNFClient(os.Getenv("KUBE_CONFIG_DIR") + "/" + resource.CloudRegionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	present, err := s.Client.IsNamespaceExists(resource.Namespace)
-	if err != nil {
-		werr := pkgerrors.Wrap(err, "Check namespace exists error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if present == false {
-		err = s.Client.CreateNamespace(resource.Namespace)
-		if err != nil {
-			werr := pkgerrors.Wrap(err, "Create new namespace error")
-			http.Error(w, werr.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	kubeData, err := utils.ReadCSARFromFileSystem(resource.CsarID)
+	/*
+		uuid,
+		{
+			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+		},
+		nil
+	*/
+	externalVNFID, resourceNameMap, err := csar.CreateVNF(resource.CsarID, resource.CloudRegionID, resource.Namespace, &kubeclient)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Read Kubernetes Data information error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Kubernetes Identifies resources by names. The UID setting doesn't seem to the primary ID.
-	// deployment.UID = types.UID(resource.CsarID) + types.UID("_") + uuid
-	if kubeData == nil || kubeData.Deployment == nil {
-		err := errors.New("Read kubeData.Deployment error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// uuid
-	externalVNFID := string(uuid.NewUUID())
-
 	// cloud1-default-uuid
 	internalVNFID := resource.CloudRegionID + "-" + resource.Namespace + "-" + externalVNFID
-
-	// cloud1-default-uuid-sisedeploy
-	internalDeploymentName := internalVNFID + "-" + kubeData.Deployment.Name
-
-	// cloud1-default-uuid-sisesvc
-	internalServiceName := internalVNFID + "-" + kubeData.Service.Name
 
 	// Persist in AAI database.
 	log.Printf("Cloud Region ID: %s, Namespace: %s, VNF ID: %s ", resource.CloudRegionID, resource.Namespace, externalVNFID)
 
-	yamlDeploymentName := kubeData.Deployment.Name
-	yamlServiceName := kubeData.Service.Name
-
-	kubeData.Deployment.Namespace = resource.Namespace
-	kubeData.Deployment.Name = internalDeploymentName
-
-	if kubeData.Service == nil {
-		werr := pkgerrors.Wrap(err, "Read kubeData.Service error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-		return
-	}
-	kubeData.Service.Namespace = resource.Namespace
-	kubeData.Service.Name = internalServiceName
-
 	// krd.AddNetworkAnnotationsToPod(kubeData, resource.Networks)
 
-	_, err = s.Client.CreateDeployment(kubeData.Deployment, resource.Namespace)
+	// "{"deployment":<>,"service":<>}"
+	out, err := json.Marshal(resourceNameMap)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	_, err = s.Client.CreateService(kubeData.Service, resource.Namespace)
-	if err != nil {
-		werr := pkgerrors.Wrap(err, "Create VNF service error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// cloud1-default-uuid-sisedeploy|cloud1-default-uuid-sisesvc
-	internalCombinedID := internalDeploymentName + "|" + internalServiceName
+	serializedResourceNameMap := string(out)
+	log.Println(serializedResourceNameMap)
 
 	// key: cloud1-default-uuid
-	// value: cloud1-default-uuid-sisedeploy|cloud1-default-uuid-sisesvc
-	err = db.DBconn.CreateEntry(internalVNFID, internalCombinedID)
+	// value: "{"deployment":<>,"service":<>}"
+	err = db.DBconn.CreateEntry(internalVNFID, serializedResourceNameMap)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	var VNFcomponentList []string
-
-	// TODO: Change this
-	VNFcomponentList = append(VNFcomponentList, yamlDeploymentName, yamlServiceName)
 
 	resp := CreateVnfResponse{
 		VNFID:         externalVNFID,
 		CloudRegionID: resource.CloudRegionID,
 		Namespace:     resource.Namespace,
-		VNFComponents: VNFcomponentList,
+		VNFComponents: resourceNameMap,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -287,13 +218,15 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// (TODO): Read kubeconfig for specific Cloud Region from local file system
 	// if present or download it from AAI
 	// err := DownloadKubeConfigFromAAI(resource.CloudRegionID, os.Getenv("KUBE_CONFIG_DIR")
-	s, err := NewVNFInstanceService(os.Getenv("KUBE_CONFIG_DIR") + "/" + cloudRegionID)
+	kubeclient, err := GetVNFClient(os.Getenv("KUBE_CONFIG_DIR") + "/" + cloudRegionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	internalCombinedID, found, err := db.DBconn.ReadEntry(internalVNFID)
+	// key: cloud1-default-uuid
+	// value: "{"deployment":<>,"service":<>}"
+	serializedResourceNameMap, found, err := db.DBconn.ReadEntry(internalVNFID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -304,17 +237,21 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	internalDeploymentName := strings.Split(internalCombinedID, "|")[0]
-	internalServiceName := strings.Split(internalCombinedID, "|")[1]
-
-	err = s.Client.DeleteService(internalServiceName, namespace)
+	/*
+		{
+			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+		},
+	*/
+	deserializedResourceNameMap := make(map[string][]string)
+	err = json.Unmarshal([]byte(serializedResourceNameMap), &deserializedResourceNameMap)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = s.Client.DeleteDeployment(internalDeploymentName, namespace)
+	err = csar.DestroyVNF(deserializedResourceNameMap, namespace, &kubeclient)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -332,74 +269,74 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// UpdateHandler method to update a VNF instance.
-func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["vnfInstanceId"]
+// // UpdateHandler method to update a VNF instance.
+// func UpdateHandler(w http.ResponseWriter, r *http.Request) {
+// 	vars := mux.Vars(r)
+// 	id := vars["vnfInstanceId"]
 
-	var resource UpdateVnfRequest
+// 	var resource UpdateVnfRequest
 
-	if r.Body == nil {
-		http.Error(w, "Body empty", http.StatusBadRequest)
-		return
-	}
+// 	if r.Body == nil {
+// 		http.Error(w, "Body empty", http.StatusBadRequest)
+// 		return
+// 	}
 
-	err := json.NewDecoder(r.Body).Decode(&resource)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-		return
-	}
+// 	err := json.NewDecoder(r.Body).Decode(&resource)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+// 		return
+// 	}
 
-	err = validateBody(resource)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-		return
-	}
+// 	err = validateBody(resource)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+// 		return
+// 	}
 
-	kubeData, err := utils.ReadCSARFromFileSystem(resource.CsarID)
+// 	kubeData, err := utils.ReadCSARFromFileSystem(resource.CsarID)
 
-	if kubeData.Deployment == nil {
-		werr := pkgerrors.Wrap(err, "Update VNF deployment error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-		return
-	}
-	kubeData.Deployment.SetUID(types.UID(id))
+// 	if kubeData.Deployment == nil {
+// 		werr := pkgerrors.Wrap(err, "Update VNF deployment error")
+// 		http.Error(w, werr.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
+// 	kubeData.Deployment.SetUID(types.UID(id))
 
-	if err != nil {
-		werr := pkgerrors.Wrap(err, "Update VNF deployment information error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-		return
-	}
+// 	if err != nil {
+// 		werr := pkgerrors.Wrap(err, "Update VNF deployment information error")
+// 		http.Error(w, werr.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
 
-	// (TODO): Read kubeconfig for specific Cloud Region from local file system
-	// if present or download it from AAI
-	s, err := NewVNFInstanceService("../kubeconfig/config")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+// 	// (TODO): Read kubeconfig for specific Cloud Region from local file system
+// 	// if present or download it from AAI
+// 	s, err := NewVNFInstanceService("../kubeconfig/config")
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
 
-	err = s.Client.UpdateDeployment(kubeData.Deployment, resource.Namespace)
-	if err != nil {
-		werr := pkgerrors.Wrap(err, "Update VNF error")
+// 	err = s.Client.UpdateDeployment(kubeData.Deployment, resource.Namespace)
+// 	if err != nil {
+// 		werr := pkgerrors.Wrap(err, "Update VNF error")
 
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-		return
-	}
+// 		http.Error(w, werr.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
 
-	resp := UpdateVnfResponse{
-		DeploymentID: id,
-	}
+// 	resp := UpdateVnfResponse{
+// 		DeploymentID: id,
+// 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(http.StatusCreated)
 
-	err = json.NewEncoder(w).Encode(resp)
-	if err != nil {
-		werr := pkgerrors.Wrap(err, "Parsing output of new VNF error")
-		http.Error(w, werr.Error(), http.StatusInternalServerError)
-	}
-}
+// 	err = json.NewEncoder(w).Encode(resp)
+// 	if err != nil {
+// 		werr := pkgerrors.Wrap(err, "Parsing output of new VNF error")
+// 		http.Error(w, werr.Error(), http.StatusInternalServerError)
+// 	}
+// }
 
 // GetHandler retrieves information about a VNF instance by reading an individual VNF instance resource.
 func GetHandler(w http.ResponseWriter, r *http.Request) {
@@ -409,40 +346,41 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	namespace := vars["namespace"]         // default
 	externalVNFID := vars["externalVNFID"] // uuid
 
-	//cloudregion1-testnamespace-1
-	//cloudregion1-testnamespace-1-deployName|cloudregion1-testnamespace-1-serviceName"
-
 	// cloud1-default-uuid
 	internalVNFID := cloudRegionID + "-" + namespace + "-" + externalVNFID
 
-	deployname := ""
-	servicename := ""
-
-	name, found, err := db.DBconn.ReadEntry(internalVNFID)
+	// key: cloud1-default-uuid
+	// value: "{"deployment":<>,"service":<>}"
+	serializedResourceNameMap, found, err := db.DBconn.ReadEntry(internalVNFID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if found == false {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	if len(name) > 0 {
-		deployname = strings.Split(name, "|")[0]
-		servicename = strings.Split(name, "|")[1]
-
-		deployname = strings.Split(deployname, internalVNFID)[1][1:]
-		servicename = strings.Split(servicename, internalVNFID)[1][1:]
+	/*
+		{
+			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
+			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
+		},
+	*/
+	deserializedResourceNameMap := make(map[string][]string)
+	err = json.Unmarshal([]byte(serializedResourceNameMap), &deserializedResourceNameMap)
+	if err != nil {
+		werr := pkgerrors.Wrap(err, "Get VNF error")
+		http.Error(w, werr.Error(), http.StatusInternalServerError)
+		return
 	}
-
-	var VNFcomponentList []string
-
-	// TODO: Change this
-	VNFcomponentList = append(VNFcomponentList, deployname, servicename)
 
 	resp := GetVnfResponse{
 		VNFID:         externalVNFID,
 		CloudRegionID: cloudRegionID,
 		Namespace:     namespace,
-		VNFComponents: VNFcomponentList,
+		VNFComponents: deserializedResourceNameMap,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

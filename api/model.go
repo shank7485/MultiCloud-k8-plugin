@@ -26,10 +26,10 @@ type CreateVnfRequest struct {
 
 // CreateVnfResponse contains the VNF creation response parameters
 type CreateVnfResponse struct {
-	VNFID         string   `json:"vnf_id"`
-	CloudRegionID string   `json:"cloud_region_id"`
-	Namespace     string   `json:"namespace"`
-	VNFComponents []string `json:"vnf_components"`
+	VNFID         string              `json:"vnf_id"`
+	CloudRegionID string              `json:"cloud_region_id"`
+	Namespace     string              `json:"namespace"`
+	VNFComponents map[string][]string `json:"vnf_components"`
 }
 
 // ListVnfsResponse contains the list of VNFs response parameters
@@ -69,10 +69,10 @@ type UpdateVnfResponse struct {
 
 // GetVnfResponse returns information about a specific VNF instance
 type GetVnfResponse struct {
-	VNFID         string   `json:"vnf_id"`
-	CloudRegionID string   `json:"cloud_region_id"`
-	Namespace     string   `json:"namespace"`
-	VNFComponents []string `json:"vnf_components"`
+	VNFID         string              `json:"vnf_id"`
+	CloudRegionID string              `json:"cloud_region_id"`
+	Namespace     string              `json:"namespace"`
+	VNFComponents map[string][]string `json:"vnf_components"`
 }
 
 // GeneralResponse is a generic response

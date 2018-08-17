@@ -17,9 +17,16 @@ function generate_binary {
     rm -f k8plugin
     pushd $GOPATH/src/github.com/shank7485/k8-plugin-multicloud
     $GOPATH/bin/dep ensure -v
+    compile_plugins
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -tags netgo -ldflags '-w' -o $GOPATH/k8plugin cmd/main.go
     popd
     mv $GOPATH/k8plugin .
+}
+
+function compile_plugins {
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o ../plugins/deployment/deployment.so ../plugins/deployment/plugin.go
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o ../plugins/namespace/namespace.so ../plugins/namespace/plugin.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o ../plugins/service/service.so ../plugins/service/plugin.go
 }
 
 function build_image {

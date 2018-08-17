@@ -16,125 +16,15 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"k8s.io/client-go/kubernetes"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
 
+	"github.com/shank7485/k8-plugin-multicloud/csar"
 	"github.com/shank7485/k8-plugin-multicloud/db"
-	"github.com/shank7485/k8-plugin-multicloud/krd"
-	"github.com/shank7485/k8-plugin-multicloud/csarParser"
-	appsV1 "k8s.io/api/apps/v1"
-	coreV1 "k8s.io/api/core/v1"
 )
-
-type mockClient struct {
-	create          func() (string, error)
-	list            func() (*[]string, error)
-	delete          func() error
-	update          func() error
-	get             func() (string, error)
-	createNamespace func() error
-	checkNamespace  func() (bool, error)
-	deleteNamespace func() error
-}
-
-// Deployment mocks
-
-func (c *mockClient) CreateDeployment(deployment *appsV1.Deployment, namespace string) (string, error) {
-	if c.create != nil {
-		return c.create()
-	}
-	return "", nil
-}
-
-func (c *mockClient) ListDeployment(limit int64, namespace string) (*[]string, error) {
-	if c.list != nil {
-		return c.list()
-	}
-	return nil, nil
-}
-
-func (c *mockClient) DeleteDeployment(name string, namespace string) error {
-	if c.delete != nil {
-		return c.delete()
-	}
-	return nil
-}
-
-func (c *mockClient) UpdateDeployment(deployment *appsV1.Deployment, namespace string) error {
-	if c.delete != nil {
-		return c.delete()
-	}
-	return nil
-}
-
-func (c *mockClient) GetDeployment(name string, namespace string) (string, error) {
-	if c.get != nil {
-		return c.get()
-	}
-	return "", nil
-}
-
-// Service mocks
-
-func (c *mockClient) CreateService(service *coreV1.Service, namespace string) (string, error) {
-	if c.create != nil {
-		return c.create()
-	}
-	return "", nil
-}
-
-func (c *mockClient) ListService(limit int64, namespace string) (*[]string, error) {
-	if c.list != nil {
-		return c.list()
-	}
-	return nil, nil
-}
-
-func (c *mockClient) DeleteService(name string, namespace string) error {
-	if c.delete != nil {
-		return c.delete()
-	}
-	return nil
-}
-
-func (c *mockClient) UpdateService(service *coreV1.Service, namespace string) error {
-	if c.delete != nil {
-		return c.delete()
-	}
-	return nil
-}
-
-func (c *mockClient) GetService(name string, namespace string) (string, error) {
-	if c.get != nil {
-		return c.get()
-	}
-	return "", nil
-}
-
-// Namespace mocks
-
-func (c *mockClient) CreateNamespace(namespace string) error {
-	if c.createNamespace != nil {
-		return c.createNamespace()
-	}
-	return nil
-}
-
-func (c *mockClient) IsNamespaceExists(namespace string) (bool, error) {
-	if c.checkNamespace != nil {
-		return c.checkNamespace()
-	}
-	return true, nil
-}
-
-func (c *mockClient) DeleteNamespace(namespace string) error {
-	if c.deleteNamespace != nil {
-		return c.deleteNamespace()
-	}
-	return nil
-}
 
 type mockDB struct {
 	db.DatabaseConnection
@@ -153,7 +43,8 @@ func (c *mockDB) CreateEntry(key string, value string) error {
 }
 
 func (c *mockDB) ReadEntry(key string) (string, bool, error) {
-	return "cloudregion1-testnamespace-1-deployName|cloudregion1-testnamespace-1-serviceName", true, nil
+	str := "{\"deployment\":[\"cloud1-default-uuid-sisedeploy\"],\"service\":[\"cloud1-default-uuid-sisesvc\"]}"
+	return str, true, nil
 }
 
 func (c *mockDB) DeleteEntry(key string) error {
@@ -161,7 +52,7 @@ func (c *mockDB) DeleteEntry(key string) error {
 }
 
 func (c *mockDB) ReadAll(key string) ([]string, error) {
-	returnVal := []string{"cloudregion1-testnamespace-key1", "cloudregion1-testnamespace-key2"}
+	returnVal := []string{"cloud1-default-uuid1", "cloud1-default-uuid2"}
 	return returnVal, nil
 }
 
@@ -198,30 +89,31 @@ func TestVNFInstanceCreation(t *testing.T) {
 				}
 			}
 		}`)
+
+		data := map[string][]string{
+			"deployment": []string{"cloud1-default-uuid-sisedeploy"},
+			"service":    []string{"cloud1-default-uuid-sisesvc"},
+		}
+
 		expected := &CreateVnfResponse{
 			VNFID:         "test_UUID",
 			CloudRegionID: "region1",
 			Namespace:     "test",
-			VNFComponents: []string{"vRouter_deployment", "vRouter_service"},
+			VNFComponents: data,
 		}
+
 		var result CreateVnfResponse
 
 		req, _ := http.NewRequest("POST", "/v1/vnf_instances/", bytes.NewBuffer(payload))
 
-		GetVNFClient = func(configPath string) (krd.VNFInstanceClientInterface, error) {
-			return &mockClient{
-				create: func() (string, error) {
-					return "vRouter_test", nil
-				},
-			}, nil
+		GetVNFClient = func(configPath string) (kubernetes.Clientset, error) {
+			return kubernetes.Clientset{}, nil
 		}
-		utils.ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
-			kubeData := &krd.KubernetesData{
-				Deployment: &appsV1.Deployment{},
-				Service:    &coreV1.Service{},
-			}
-			return kubeData, nil
+
+		csar.CreateVNF = func(id string, r string, n string, kubeclient *kubernetes.Clientset) (string, map[string][]string, error) {
+			return "externaluuid", data, nil
 		}
+
 		db.DBconn = &mockDB{}
 
 		response := executeRequest(req)
@@ -265,11 +157,11 @@ func TestVNFInstanceCreation(t *testing.T) {
 func TestVNFInstancesRetrieval(t *testing.T) {
 	t.Run("Succesful get a list of VNF", func(t *testing.T) {
 		expected := &ListVnfsResponse{
-			VNFs: []string{"key1", "key2"},
+			VNFs: []string{"uuid1", "uuid2"},
 		}
 		var result ListVnfsResponse
 
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace", nil)
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloud1/default", nil)
 
 		db.DBconn = &mockDB{}
 
@@ -296,20 +188,14 @@ func TestVNFInstanceDeletion(t *testing.T) {
 	t.Run("Succesful delete a VNF", func(t *testing.T) {
 		req, _ := http.NewRequest("DELETE", "/v1/vnf_instances/cloudregion1/testnamespace/1", nil)
 
-		GetVNFClient = func(configPath string) (krd.VNFInstanceClientInterface, error) {
-			return &mockClient{
-				create: func() (string, error) {
-					return "vRouter_test", nil
-				},
-			}, nil
+		GetVNFClient = func(configPath string) (kubernetes.Clientset, error) {
+			return kubernetes.Clientset{}, nil
 		}
-		utils.ReadCSARFromFileSystem = func(csarID string) (*krd.KubernetesData, error) {
-			kubeData := &krd.KubernetesData{
-				Deployment: &appsV1.Deployment{},
-				Service:    &coreV1.Service{},
-			}
-			return kubeData, nil
+
+		csar.DestroyVNF = func(d map[string][]string, n string, kubeclient *kubernetes.Clientset) error {
+			return nil
 		}
+
 		db.DBconn = &mockDB{}
 
 		response := executeRequest(req)
@@ -326,6 +212,8 @@ func TestVNFInstanceDeletion(t *testing.T) {
 	// })
 }
 
+// TODO: Update this test when the UpdateVNF endpoint is fixed.
+/*
 func TestVNFInstanceUpdate(t *testing.T) {
 	t.Run("Succesful update a VNF", func(t *testing.T) {
 		payload := []byte(`{
@@ -380,22 +268,31 @@ func TestVNFInstanceUpdate(t *testing.T) {
 		}
 	})
 }
+*/
 
 func TestVNFInstanceRetrieval(t *testing.T) {
-	var client *mockClient
-	GetVNFClient = func(configPath string) (krd.VNFInstanceClientInterface, error) {
-		return client, nil
-	}
-
 	t.Run("Succesful get a VNF", func(t *testing.T) {
+
+		data := map[string][]string{
+			"deployment": []string{"cloud1-default-uuid-sisedeploy"},
+			"service":    []string{"cloud1-default-uuid-sisesvc"},
+		}
+
 		expected := GetVnfResponse{
 			VNFID:         "1",
-			CloudRegionID: "cloudregion1",
-			Namespace:     "testnamespace",
-			VNFComponents: []string{"deployName", "serviceName"},
+			CloudRegionID: "cloud1",
+			Namespace:     "default",
+			VNFComponents: data,
 		}
-		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace/1", nil)
+
+		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloud1/default/1", nil)
+
+		GetVNFClient = func(configPath string) (kubernetes.Clientset, error) {
+			return kubernetes.Clientset{}, nil
+		}
+
 		db.DBconn = &mockDB{}
+
 		response := executeRequest(req)
 		checkResponseCode(t, http.StatusOK, response.Code)
 
@@ -412,8 +309,8 @@ func TestVNFInstanceRetrieval(t *testing.T) {
 	})
 	t.Run("VNF not found", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/v1/vnf_instances/cloudregion1/testnamespace/1", nil)
-		client = &mockClient{}
 		response := executeRequest(req)
+
 		checkResponseCode(t, http.StatusOK, response.Code)
 	})
 }
