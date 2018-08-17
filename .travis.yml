@@ -3,4 +3,8 @@ language: go
 go:
   - 1.10.x
 
-script: go test -v ./... -cover
+script:
+ - go build -buildmode=plugin -o plugins/deployment/deployment.so plugins/deployment/plugin.go
+ - go build -buildmode=plugin -o plugins/namespace/namespace.so plugins/namespace/plugin.go
+ - go build -buildmode=plugin -o plugins/service/service.so plugins/service/plugin.go
+ - go test -v ./... -cover
