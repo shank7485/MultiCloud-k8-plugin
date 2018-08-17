@@ -14,7 +14,6 @@ limitations under the License.
 package csar
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"log"
 	"os"
@@ -199,43 +198,4 @@ func ReadMetadataFile(yamlFilePath string) (MetadataFile, error) {
 	}
 
 	return seqFile, nil
-}
-
-// SerializeMap serializes map[string][]string into a string
-func SerializeMap(data map[string][]string) (string, error) {
-	/*
-		IP:
-		{
-			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
-			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
-		}
-		OP:
-		// "{"deployment":<>,"service":<>}"
-	*/
-	out, err := json.Marshal(data)
-	if err != nil {
-		return "", err
-	}
-
-	return string(out), nil
-}
-
-// DeSerializeMap deserializes string into map[string][]string
-func DeSerializeMap(serialData string) (map[string][]string, error) {
-	/*
-		IP:
-		// "{"deployment":<>,"service":<>}"
-		OP:
-		{
-			"deployment": ["cloud1-default-uuid-sisedeploy1", "cloud1-default-uuid-sisedeploy2", ... ]
-			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
-		}
-	*/
-	result := make(map[string][]string)
-	err := json.Unmarshal([]byte(serialData), &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }

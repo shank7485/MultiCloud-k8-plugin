@@ -118,13 +118,13 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	// krd.AddNetworkAnnotationsToPod(kubeData, resource.Networks)
 
 	// "{"deployment":<>,"service":<>}"
-	serializedResourceNameMap, err := csar.SerializeMap(resourceNameMap)
+	out, err := json.Marshal(resourceNameMap)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Create VNF deployment error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	serializedResourceNameMap := string(out)
 	log.Println(serializedResourceNameMap)
 
 	// key: cloud1-default-uuid
@@ -243,7 +243,8 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
 		},
 	*/
-	deserializedResourceNameMap, err := csar.DeSerializeMap(serializedResourceNameMap)
+	deserializedResourceNameMap := make(map[string][]string)
+	err = json.Unmarshal([]byte(serializedResourceNameMap), &deserializedResourceNameMap)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Delete VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
@@ -367,7 +368,8 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 			"service": ["cloud1-default-uuid-sisesvc1", "cloud1-default-uuid-sisesvc2", ... ]
 		},
 	*/
-	deserializedResourceNameMap, err := csar.DeSerializeMap(serializedResourceNameMap)
+	deserializedResourceNameMap := make(map[string][]string)
+	err = json.Unmarshal([]byte(serializedResourceNameMap), &deserializedResourceNameMap)
 	if err != nil {
 		werr := pkgerrors.Wrap(err, "Get VNF error")
 		http.Error(w, werr.Error(), http.StatusInternalServerError)
