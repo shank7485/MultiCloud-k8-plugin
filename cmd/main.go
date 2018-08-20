@@ -21,8 +21,9 @@ import (
 	"path/filepath"
 
 	"github.com/gorilla/handlers"
-	"github.com/shank7485/k8-plugin-multicloud/api"
 	"k8s.io/client-go/util/homedir"
+
+	"k8-plugin-multicloud/api"
 )
 
 func main() {

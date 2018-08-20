@@ -23,7 +23,7 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
-	"github.com/shank7485/k8-plugin-multicloud/krd"
+	"k8-plugin-multicloud/krd"
 )
 
 func LoadMockPlugins(krdLoadedPlugins *map[string]*plugin.Plugin) error {

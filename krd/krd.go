@@ -20,7 +20,6 @@ import (
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	// coreV1Interface "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 // GetKubeClient loads the Kubernetes configuation values stored into the local configuration file

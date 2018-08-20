@@ -22,8 +22,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/shank7485/k8-plugin-multicloud/csar"
-	"github.com/shank7485/k8-plugin-multicloud/db"
+	"k8-plugin-multicloud/csar"
+	"k8-plugin-multicloud/db"
 )
 
 type mockDB struct {

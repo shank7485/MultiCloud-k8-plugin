@@ -25,7 +25,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/uuid"
 
-	"github.com/shank7485/k8-plugin-multicloud/krd"
+	"k8-plugin-multicloud/krd"
 )
 
 // CreateVNF reads the CSAR files from the files system and creates them one by one

@@ -22,8 +22,8 @@ import (
 	"github.com/gorilla/mux"
 	pkgerrors "github.com/pkg/errors"
 
-	"github.com/shank7485/k8-plugin-multicloud/db"
-	"github.com/shank7485/k8-plugin-multicloud/krd"
+	"k8-plugin-multicloud/db"
+	"k8-plugin-multicloud/krd"
 )
 
 // CheckEnvVariables checks for required Environment variables

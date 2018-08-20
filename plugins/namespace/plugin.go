@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func main(){}
+func main() {}
 
 // CreateResource is used to create a new Namespace
 func CreateResource(namespace string, client *kubernetes.Clientset) error {
