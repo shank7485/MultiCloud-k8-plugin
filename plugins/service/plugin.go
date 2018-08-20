@@ -13,10 +13,10 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/shank7485/k8-plugin-multicloud/krd"
+	"k8-plugin-multicloud/krd"
 )
 
-func main(){}
+func main() {}
 
 // CreateResource object in a specific Kubernetes Deployment
 func CreateResource(kubedata *krd.GenericKubeResourceData, kubeclient *kubernetes.Clientset) (string, error) {

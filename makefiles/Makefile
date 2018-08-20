@@ -1,20 +1,26 @@
-GOPATH := $(shell realpath "$(CURDIR)"/../../../../../)
+GOPATH := $(GOPATH)
 
 export GOPATH ...
 
-all: build run_tests
-ci: run_tests
+all: check_gopath plugins build run_tests
+ci: check_gopath plugins run_tests
 
 build:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -tags netgo -ldflags '-w' -o $(GOPATH)/target/k8plugin $(CURDIR)/../cmd/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -tags netgo -ldflags '-w' -o $(GOPATH)/target/k8plugin $(GOPATH)/src/k8-plugin-multicloud/cmd/main.go
 
 run_tests:
-	cd ../ && go test -v ./... -cover
+	cd $(GOPATH)/src/k8-plugin-multicloud && go test -v ./... -cover
 
 format:
-	cd ../ && go fmt ./...
+	cd $(GOPATH)/src/k8-plugin-multicloud && go fmt ./...
 
 plugins:
-	go build -buildmode=plugin -o ../plugins/deployment/deployment.so ../plugins/deployment/plugin.go
-	go build -buildmode=plugin -o ../plugins/namespace/namespace.so ../plugins/namespace/plugin.go
-	go build -buildmode=plugin -o ../plugins/service/service.so ../plugins/service/plugin.go
+	go build -buildmode=plugin -o $(GOPATH)/src/k8-plugin-multicloud/plugins/deployment/deployment.so $(GOPATH)/src/k8-plugin-multicloud/plugins/deployment/plugin.go
+	go build -buildmode=plugin -o $(GOPATH)/src/k8-plugin-multicloud/plugins/namespace/namespace.so $(GOPATH)/src/k8-plugin-multicloud/plugins/namespace/plugin.go
+	go build -buildmode=plugin -o $(GOPATH)/src/k8-plugin-multicloud/plugins/service/service.so $(GOPATH)/src/k8-plugin-multicloud/plugins/service/plugin.go
+	go build -buildmode=plugin -o $(GOPATH)/src/k8-plugin-multicloud/csar/mock_plugins/mockplugin.so $(GOPATH)/src/k8-plugin-multicloud/csar/mock_plugins/mockplugin.go
+
+check_gopath:
+ifndef GOPATH
+  $(error GOPATH is not set)
+endif

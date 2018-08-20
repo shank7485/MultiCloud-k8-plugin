@@ -6,7 +6,7 @@ import (
 	"github.com/shank7485/k8-plugin-multicloud/krd"
 )
 
-func main(){}
+func main() {}
 
 // CreateResource object in a specific Kubernetes resource
 func CreateResource(kubedata *krd.GenericKubeResourceData, kubeclient *kubernetes.Clientset) (string, error) {

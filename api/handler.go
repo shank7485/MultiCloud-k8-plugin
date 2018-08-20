@@ -26,9 +26,9 @@ import (
 	// "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/shank7485/k8-plugin-multicloud/csar"
-	"github.com/shank7485/k8-plugin-multicloud/db"
-	"github.com/shank7485/k8-plugin-multicloud/krd"
+	"k8-plugin-multicloud/csar"
+	"k8-plugin-multicloud/db"
+	"k8-plugin-multicloud/krd"
 )
 
 // GetVNFClient retrieve the client used to communicate with a Kubernetes Cluster
