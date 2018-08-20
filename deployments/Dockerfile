@@ -16,9 +16,8 @@ RUN apk update && apk add --no-cache bash
 
 EXPOSE 8081
 
-WORKDIR /plugin
-ADD ./k8plugin /plugin/
-ADD ./entrypoint.sh /plugin/
+WORKDIR /opt/multicloud/k8s
+ADD ./k8plugin ./
+ADD ./*.so ./
 
-# RUN /bin/bash
-ENTRYPOINT /plugin/entrypoint.sh
+CMD ["./k8plugin"]
