@@ -2,12 +2,12 @@ GOPATH := $(GOPATH)
 
 export GOPATH ...
 
-.DEFAULT_GOAL := ci
+.DEFAULT_GOAL := build
 
-all: check_gopath plugins build run_tests
-ci: check_gopath plugins run_tests
+build: check_gopath plugins run_tests
+deploy: check_gopath plugins generate_binary run_tests
 
-build:
+generate_binary:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -tags netgo -ldflags '-w' -o $(GOPATH)/target/k8plugin $(GOPATH)/src/k8-plugin-multicloud/cmd/main.go
 
 run_tests:
