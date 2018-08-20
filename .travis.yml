@@ -5,6 +5,10 @@ go:
 
 go_import_path: k8-plugin-multicloud
 
+before_install:                                                                 
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh  
+  - dep ensure
+
 script:
  - go build -buildmode=plugin -o plugins/deployment/deployment.so plugins/deployment/plugin.go
  - go build -buildmode=plugin -o plugins/namespace/namespace.so plugins/namespace/plugin.go
