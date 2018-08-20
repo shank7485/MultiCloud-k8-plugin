@@ -2,6 +2,8 @@ GOPATH := $(GOPATH)
 
 export GOPATH ...
 
+.DEFAULT_GOAL := ci
+
 all: check_gopath plugins build run_tests
 ci: check_gopath plugins run_tests
 
