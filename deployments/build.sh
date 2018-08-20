@@ -24,9 +24,9 @@ function generate_binary {
 }
 
 function compile_plugins {
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o ../plugins/deployment/deployment.so ../plugins/deployment/plugin.go
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o ../plugins/namespace/namespace.so ../plugins/namespace/plugin.go
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o ../plugins/service/service.so ../plugins/service/plugin.go
+    for plugin in deployment namespace service; do
+        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -o ../plugins/$plugin/$plugin.so ../plugins/$plugin/plugin.go
+    done
 }
 
 function build_image {
