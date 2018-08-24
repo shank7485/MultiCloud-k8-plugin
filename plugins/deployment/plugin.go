@@ -16,8 +16,6 @@ import (
 	"k8-plugin-multicloud/krd"
 )
 
-func main() {}
-
 // CreateResource object in a specific Kubernetes Deployment
 func CreateResource(kubedata *krd.GenericKubeResourceData, kubeclient *kubernetes.Clientset) (string, error) {
 	if kubedata.Namespace == "" {

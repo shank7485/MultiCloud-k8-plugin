@@ -18,9 +18,9 @@ function generate_binary {
     rm -f *.so
     $GOPATH/bin/dep ensure -v
     for plugin in deployment namespace service; do
-        go build -buildmode=plugin -o ./$plugin.so ../plugins/$plugin/plugin.go
+        CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -buildmode=plugin -a -tags netgo -o ./$plugin.so ../plugins/$plugin/plugin.go
     done
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -tags netgo -ldflags '-w' -o ./k8plugin ../cmd/main.go
+    CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -tags netgo -o ./k8plugin ../cmd/main.go
 }
 
 function build_image {
